@@ -2453,7 +2453,7 @@
         function checkConnectionStatus() {
             isOnline = navigator.onLine;
             if (isOnline) {
-                showNotification('Conexión restablecida. Sincronizando datos...', 'success');
+                //showNotification('Conexión restablecida. Sincronizando datos...', 'success');
                 syncWithFirebase();
             } else {
                 showNotification('Sin conexión. Usando datos locales.', 'warning');
@@ -2467,7 +2467,7 @@
                 return;
             }
             
-            showNotification('Sincronizando con Firebase...', 'success', 3000);
+        //    showNotification('Sincronizando con Firebase...', 'success', 3000);
             
             try {
                 // Guardar transacciones en Firebase
@@ -2495,7 +2495,7 @@
                     lastUpdated: new Date()
                 });
                 
-                showNotification('Datos sincronizados correctamente con Firebase', 'success');
+               // showNotification('Datos sincronizados correctamente con Firebase', 'success');
             } catch (error) {
                 console.error("Error sincronizando con Firebase:", error);
                 showNotification('Error al sincronizar con Firebase', 'error');
@@ -2533,7 +2533,7 @@
                         movements: []
                     };
                     
-                    showNotification('Datos cargados desde Firebase', 'success');
+                    showNotification('Conexión establecida', 'success');
                 } else {
                     // Si no existe el documento, crear uno nuevo
                     await syncWithFirebase();

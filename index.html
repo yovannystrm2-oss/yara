@@ -2453,7 +2453,7 @@
         function checkConnectionStatus() {
             isOnline = navigator.onLine;
             if (isOnline) {
-                //showNotification('Conexión restablecida. Sincronizando datos...', 'success');
+               // showNotification('Conexión restablecida. Sincronizando datos...', 'success');
                 syncWithFirebase();
             } else {
                 showNotification('Sin conexión. Usando datos locales.', 'warning');
@@ -2467,7 +2467,7 @@
                 return;
             }
             
-        //    showNotification('Sincronizando con Firebase...', 'success', 3000);
+         //   showNotification('Sincronizando con Firebase...', 'success', 3000);
             
             try {
                 // Guardar transacciones en Firebase
@@ -2495,7 +2495,7 @@
                     lastUpdated: new Date()
                 });
                 
-               // showNotification('Datos sincronizados correctamente con Firebase', 'success');
+              // showNotification('Datos sincronizados correctamente con Firebase', 'success');
             } catch (error) {
                 console.error("Error sincronizando con Firebase:", error);
                 showNotification('Error al sincronizar con Firebase', 'error');
@@ -2645,66 +2645,68 @@
         }
         
         // Confirmar la venta
-        async function confirmSale() {
-            if (!pendingSale) return;
-            
-            const now = new Date();
-            const fecha = now.toLocaleDateString();
-            const hora = now.toLocaleTimeString();
-            
-            const transaction = {
-                id: Date.now(),
-                type: 'sale',
-                product: pendingSale.product,
-                quantity: pendingSale.quantity,
-                price: pendingSale.price,
-                description: pendingSale.description,
-                paymentMethod: pendingSale.paymentMethod,
-                amount: pendingSale.amount,
-                date: `${fecha} ${hora}`
-            };
-            
-            transactions.push(transaction);
-            
-            // Guardar en Firebase
-            try {
-                await db.collection('transactions').doc(transaction.id.toString()).set(transaction);
-            } catch (error) {
-                console.error('Error guardando transacción en Firebase:', error);
-                showNotification('Error al guardar la transacción', 'error');
-            }
-            
-            // Si el pago es en efectivo, agregar a la caja
-            if (pendingSale.paymentMethod === 'efectivo') {
-                cashData.cash += pendingSale.amount;
-                cashData.movements.push({
-                    type: 'ingreso',
-                    amount: pendingSale.amount,
-                    description: `Venta: ${pendingSale.product}`,
-                    date: `${fecha} ${hora}`
-                });
-            }
-            
-            await syncWithFirebase();
-            updateTransactionLists();
-            updateSummary();
-            updateHistory();
-            
-            // Limpiar campos de venta
-            cleanSaleFields();
-            
-            // Cerrar el modal
-            closeConfirmationModal();
-            
-            // Mostrar notificación de éxito
-            const productInfo = predefinedProducts[pendingSale.product] || { tipo: "por-kg" };
-            showNotification(
-                `✅ Venta registrada: ${pendingSale.quantity} ${productInfo.tipo === "fijo" ? "unidad" : "kg"} de ${pendingSale.product} por S/ ${pendingSale.amount.toFixed(2)}`,
-                'success'
-            );
-            
-            pendingSale = null;
-        }
+        // Confirmar la venta
+async function confirmSale() {
+    if (!pendingSale) return;
+    
+    const now = new Date();
+    const fecha = now.toLocaleDateString();
+    const hora = now.toLocaleTimeString();
+    
+    const transaction = {
+        id: Date.now(),
+        type: 'sale',
+        product: pendingSale.product,
+        quantity: pendingSale.quantity,
+        price: pendingSale.price,
+        description: pendingSale.description,
+        paymentMethod: pendingSale.paymentMethod,
+        amount: pendingSale.amount,
+        date: `${fecha} ${hora}`
+    };
+    
+    transactions.push(transaction);
+    
+    // Mostrar notificación de éxito ANTES de guardar/sincronizar
+    
+    
+    // Guardar en Firebase
+    try {
+        await db.collection('transactions').doc(transaction.id.toString()).set(transaction);
+    } catch (error) {
+        console.error('Error guardando transacción en Firebase:', error);
+        showNotification('Error al guardar la transacción en el servidor', 'error');
+    }
+    
+    // Si el pago es en efectivo, agregar a la caja
+    if (pendingSale.paymentMethod === 'efectivo') {
+        cashData.cash += pendingSale.amount;
+        cashData.movements.push({
+            type: 'ingreso',
+            amount: pendingSale.amount,
+            description: `Venta: ${pendingSale.product}`,
+            date: `${fecha} ${hora}`
+        });
+    }
+    
+    await syncWithFirebase();
+    updateTransactionLists();
+    updateSummary();
+    updateHistory();
+    const productInfo = predefinedProducts[pendingSale.product] || { tipo: "por-kg" };
+    showNotification(
+        `✅ Venta registrada: ${pendingSale.quantity} ${productInfo.tipo === "fijo" ? "unidad" : "kg"} de ${pendingSale.product} por S/ ${pendingSale.amount.toFixed(2)}`,
+        'success'
+    );
+    // Limpiar campos de venta
+    cleanSaleFields();
+    
+    // Cerrar el modal
+    closeConfirmationModal();
+    
+    pendingSale = null;
+}
+
         
         // Añadir una nueva venta
         function addSale() {

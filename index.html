@@ -2095,64 +2095,109 @@
             }
         }
 
-        // Función mejorada para reporte de ventas
-        function generateSalesReport(salesData) {
+     // Generar reporte de ventas
+        function generateSalesReport() {
             const doc = new jsPDF();
             const now = new Date();
             const dateStr = now.toLocaleDateString();
+            const timeStr = now.toLocaleTimeString();
             
-            // Encabezado
+            // Encabezado del reporte
             doc.setFontSize(20);
-            doc.text("ANÁLISIS DE VENTAS - Anyela", 105, 20, { align: "center" });
+            doc.setTextColor(40, 40, 40);
+            doc.text("REPORTE DE VENTAS - Anyela", 105, 20, { align: "center" });
+            
             doc.setFontSize(12);
-            doc.text(`Generado el: ${dateStr}`, 105, 30, { align: "center" });
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Generado el: ${dateStr} a las ${timeStr}`, 105, 30, { align: "center" });
             
-            // Resumen
-            const totalSales = salesData.reduce((sum, t) => sum + t.amount, 0);
-            doc.setFontSize(14);
-            doc.text(`Total de ventas: S/ ${totalSales.toFixed(2)}`, 20, 45);
-            doc.text(`Cantidad de transacciones: ${salesData.length}`, 20, 52);
+            // Línea separadora
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 35, 190, 35);
             
-            // Producto más vendido
-            const productStats = {};
-            salesData.forEach(sale => {
-                if (!productStats[sale.product]) {
-                    productStats[sale.product] = { quantity: 0, amount: 0 };
+            // Resumen de ventas
+            const totalSales = transactions
+                .filter(t => t.type === 'sale')
+                .reduce((sum, t) => sum + t.amount, 0);
+                
+            const totalSalesCount = transactions.filter(t => t.type === 'sale').length;
+            
+            doc.setFontSize(16);
+            doc.setTextColor(50, 50, 50);
+            doc.text("RESUMEN DE VENTAS", 20, 45);
+            
+            doc.setFontSize(12);
+            doc.setTextColor(80, 80, 80);
+            doc.text(`Total de ventas: S/ ${totalSales.toFixed(2)}`, 20, 55);
+            doc.text(`Cantidad de transacciones: ${totalSalesCount}`, 20, 62);
+            
+            // Ventas por método de pago
+            const salesByPayment = {
+                efectivo: 0,
+                yape: 0,
+                transferencia: 0,
+                caja: 0
+            };
+            
+            transactions
+                .filter(t => t.type === 'sale')
+                .forEach(t => {
+                    salesByPayment[t.paymentMethod] += t.amount;
+                });
+            
+            doc.text("Ventas por método de pago:", 20, 75);
+            let yPos = 82;
+            
+            Object.keys(salesByPayment).forEach(method => {
+                if (salesByPayment[method] > 0) {
+                    doc.text(`${method.charAt(0).toUpperCase() + method.slice(1)}: S/ ${salesByPayment[method].toFixed(2)}`, 25, yPos);
+                    yPos += 7;
                 }
-                productStats[sale.product].quantity += sale.quantity;
-                productStats[sale.product].amount += sale.amount;
             });
             
-            let topProduct = '';
-            let topQuantity = 0;
-            Object.entries(productStats).forEach(([product, data]) => {
-                if (data.quantity > topQuantity) {
-                    topProduct = product;
-                    topQuantity = data.quantity;
-                }
-            });
+            // Detalle de ventas
+            yPos += 10;
+            if (yPos > 240) {
+                doc.addPage();
+                yPos = 20;
+            }
             
-            doc.text(`Producto más vendido: ${topProduct} (${topQuantity} kg)`, 20, 59);
+            doc.setFontSize(16);
+            doc.setTextColor(50, 50, 50);
+            doc.text("DETALLE DE VENTAS", 20, yPos);
+            yPos += 10;
             
-            // Tabla detallada
-            const tableData = salesData.map(sale => [
-                sale.date.split(' ')[0],
-                sale.product,
-                sale.quantity + (predefinedProducts[sale.product]?.tipo === "fijo" ? ' unid' : ' kg'),
-                `S/ ${sale.price.toFixed(2)}`,
-                `S/ ${sale.amount.toFixed(2)}`,
-                sale.paymentMethod
-            ]);
+            // Tabla de ventas
+            const salesData = transactions
+                .filter(t => t.type === 'sale')
+                .map(t => [
+                    t.date.split(' ')[0],
+                    t.product,
+                    t.quantity + (predefinedProducts[t.product]?.tipo === "fijo" ? " unid" : " kg"),
+                    `S/ ${t.price.toFixed(2)}`,
+                    `S/ ${t.amount.toFixed(2)}`,
+                    t.paymentMethod,
+                    t.user
+                ]);
             
             doc.autoTable({
-                startY: 70,
-                head: [['Fecha', 'Producto', 'Cantidad', 'Precio', 'Total', 'Pago']],
-                body: tableData,
-                theme: 'grid'
+                startY: yPos,
+                head: [['Fecha', 'Producto', 'Cantidad', 'Precio', 'Total', 'Pago', 'Usuario']],
+                body: salesData,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [46, 134, 222],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold'
+                },
+                alternateRowStyles: {
+                    fillColor: [240, 240, 240]
+                }
             });
             
-            doc.save(`Ventas_${dateStr.replace(/\//g, '-')}.pdf`);
-            showNotification('Reporte de ventas generado', 'success');
+            // Guardar PDF
+            doc.save(`Reporte_Ventas_Anyela_${dateStr.replace(/\//g, '-')}.pdf`);
+            showNotification('✅ Reporte de ventas generado correctamente', 'success');
         }
         
         // Función para reporte de gastos

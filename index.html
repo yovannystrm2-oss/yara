@@ -2368,174 +2368,189 @@
 
 
 
- function generateFullReport() {
-            try {
-                const doc = new jsPDF();
-                const now = new Date();
-                const dateStr = now.toLocaleDateString();
-                const timeStr = now.toLocaleTimeString();
-                
-                // Encabezado del reporte
-                doc.setFontSize(20);
-                doc.setTextColor(40, 40, 40);
-                doc.text("REPORTE COMPLETO - Anyela", 105, 20, { align: "center" });
-                
-                doc.setFontSize(12);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`Generado el: ${dateStr} a las ${timeStr}`, 105, 30, { align: "center" });
-                
-                // Línea separadora
-                doc.setDrawColor(200, 200, 200);
-                doc.line(20, 35, 190, 35);
-                
-                // Resumen general
-                const totalSales = transactions
-                    .filter(t => t.type === 'sale')
-                    .reduce((sum, t) => sum + t.amount, 0);
-                    
-                const totalExpenses = transactions
-                    .filter(t => t.type === 'expense')
-                    .reduce((sum, t) => sum + t.amount, 0);
-                    
-                const balance = totalSales - totalExpenses;
-                
-                doc.setFontSize(16);
-                doc.setTextColor(50, 50, 50);
-                doc.text("RESUMEN GENERAL", 20, 45);
-                
-                doc.setFontSize(12);
-                doc.setTextColor(80, 80, 80);
-                doc.text(`Total de ventas: S/ ${totalSales.toFixed(2)}`, 20, 55);
-                doc.text(`Total de gastos: S/ ${totalExpenses.toFixed(2)}`, 20, 62);
-                doc.setTextColor(balance >= 0 ? [16, 172, 132] : [238, 82, 83]);
-                doc.text(`Balance: S/ ${balance.toFixed(2)}`, 20, 69);
-                
-                // Estado de caja
-                doc.setTextColor(80, 80, 80);
-                doc.text(`Efectivo en caja: S/ ${cashData.cash.toFixed(2)}`, 20, 79);
-                doc.text(`Vuelto disponible: S/ ${cashData.change.toFixed(2)}`, 20, 86);
-                
-                // Ventas por método de pago
-                doc.text("Ventas por método de pago:", 20, 96);
-                let yPos = 103;
-                
-                const salesByPayment = {
-                    efectivo: 0,
-                    yape: 0,
-                    transferencia: 0,
-                    caja: 0
-                };
-                
-                transactions
-                    .filter(t => t.type === 'sale')
-                    .forEach(t => {
-                        salesByPayment[t.paymentMethod] += t.amount;
-                    });
-                
-                Object.keys(salesByPayment).forEach(method => {
-                    if (salesByPayment[method] > 0) {
-                        doc.text(`${method.charAt(0).toUpperCase() + method.slice(1)}: S/ ${salesByPayment[method].toFixed(2)}`, 25, yPos);
-                        yPos += 7;
-                    }
-                });
-                
-                // Gastos por categoría
-                yPos += 10;
-                doc.text("Gastos por categoría:", 20, yPos);
-                yPos += 7;
-                
-                const expensesByCategory = {};
-                categories.expense.forEach(category => {
-                    expensesByCategory[category] = 0;
-                });
-                
-                transactions
-                    .filter(t => t.type === 'expense')
-                    .forEach(t => {
-                        expensesByCategory[t.category] += t.amount;
-                    });
-                
-                Object.keys(expensesByCategory).forEach(category => {
-                    if (expensesByCategory[category] > 0) {
-                        doc.text(`${category}: S/ ${expensesByCategory[category].toFixed(2)}`, 25, yPos);
-                        yPos += 7;
-                    }
-                });
-                
-                // Detalle de transacciones
-                yPos += 10;
-                if (yPos > 240) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-                
-                doc.setFontSize(16);
-                doc.setTextColor(50, 50, 50);
-                doc.text("DETALLE DE TRANSACCIONES", 20, yPos);
-                yPos += 10;
-                
-                // Tabla de transacciones
-                const transactionsData = transactions.map(t => {
-                    if (t.type === 'sale') {
-                        return [
-                            t.date.split(' ')[0],
-                            'VENTA',
-                            t.product,
-                            t.quantity + (predefinedProducts[t.product]?.tipo === "fijo" ? " unid" : " kg"),
-                            `S/ ${t.price.toFixed(2)}`,
-                            `S/ ${t.amount.toFixed(2)}`,
-                            t.paymentMethod,
-                            t.user
-                        ];
-                    } else {
-                        return [
-                            t.date.split(' ')[0],
-                            'GASTO',
-                            t.description,
-                            t.category,
-                            `S/ ${t.amount.toFixed(2)}`,
-                            '',
-                            t.paymentMethod,
-                            t.user
-                        ];
-                    }
-                });
-                
-                doc.autoTable({
-                    startY: yPos,
-                    head: [['Fecha', 'Tipo', 'Descripción', 'Detalles', 'Monto', '', 'Pago', 'Usuario']],
-                    body: transactionsData,
-                    theme: 'grid',
-                    headStyles: {
-                        fillColor: [80, 80, 80],
-                        textColor: [255, 255, 255],
-                        fontStyle: 'bold'
-                    },
-                    alternateRowStyles: {
-                        fillColor: [240, 240, 240]
-                    },
-                    didDrawCell: function(data) {
-                        // Esta función es opcional, solo para añadir iconos visuales
-                        if (data.section === 'body' && data.column.index === 1) {
-                            if (data.cell.raw === 'VENTA') {
-                                doc.setFillColor(16, 172, 132);
-                            } else if (data.cell.raw === 'GASTO') {
-                                doc.setFillColor(238, 82, 83);
-                            }
-                            doc.circle(data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, 3, 'F');
-                        }
-                    }
-                });
-                
-                // Guardar PDF
-                doc.save(`Reporte_Completo_Anyela_${dateStr.replace(/\//g, '-')}.pdf`);
-                showNotification('✅ Reporte completo generado correctamente', 'success');
-                
-            } catch (error) {
-                console.error("Error al generar reporte completo:", error);
-                showNotification('❌ Error al generar el reporte completo', 'error');
+// Función para reporte completo mejorado
+function generateFullReport() {
+    try {
+        const doc = new jsPDF();
+        const now = new Date();
+        const dateStr = now.toLocaleDateString();
+        const timeStr = now.toLocaleTimeString();
+        
+        // Encabezado
+        doc.setFontSize(20);
+        doc.text("REPORTE COMPLETO - Anyela", 105, 20, { align: "center" });
+        
+        doc.setFontSize(12);
+        doc.text(`Generado el: ${dateStr} a las ${timeStr}`, 105, 30, { align: "center" });
+        
+        // Línea separadora
+        doc.setDrawColor(200, 200, 200);
+        doc.line(20, 35, 190, 35);
+        
+        // Resumen general
+        const sales = transactions.filter(t => t.type === 'sale');
+        const expenses = transactions.filter(t => t.type === 'expense');
+        
+        const totalSales = sales.reduce((sum, t) => sum + t.amount, 0);
+        const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+        const balance = totalSales - totalExpenses;
+        
+        doc.setFontSize(16);
+        doc.text("RESUMEN GENERAL", 20, 45);
+        
+        doc.setFontSize(12);
+        doc.text(`Total de ventas: S/ ${totalSales.toFixed(2)}`, 20, 55);
+        doc.text(`Total de gastos: S/ ${totalExpenses.toFixed(2)}`, 20, 62);
+        doc.setTextColor(balance >= 0 ? [16, 172, 132] : [238, 82, 83]);
+        doc.text(`Balance: S/ ${balance.toFixed(2)}`, 20, 69);
+        
+        // Estado de caja
+        doc.setTextColor(80, 80, 80);
+        doc.text(`Efectivo en caja: S/ ${cashData.cash.toFixed(2)}`, 20, 79);
+        doc.text(`Vuelto disponible: S/ ${cashData.change.toFixed(2)}`, 20, 86);
+        
+        // ANÁLISIS DE PRODUCTOS - LO MÁS VENDIDO
+        const productStats = {};
+        sales.forEach(sale => {
+            if (!productStats[sale.product]) {
+                productStats[sale.product] = { quantity: 0, amount: 0 };
             }
+            productStats[sale.product].quantity += sale.quantity;
+            productStats[sale.product].amount += sale.amount;
+        });
+        
+        // Encontrar producto más vendido
+        let topProduct = '';
+        let topQuantity = 0;
+        let topAmount = 0;
+        
+        Object.entries(productStats).forEach(([product, data]) => {
+            if (data.quantity > topQuantity) {
+                topProduct = product;
+                topQuantity = data.quantity;
+                topAmount = data.amount;
+            }
+        });
+        
+        doc.text("Producto más vendido:", 20, 96);
+        doc.text(`${topProduct} - ${topQuantity} ${predefinedProducts[topProduct]?.tipo === "fijo" ? "unidades" : "kg"}`, 25, 103);
+        doc.text(`Generó: S/ ${topAmount.toFixed(2)}`, 25, 110);
+        
+        // Ventas por método de pago
+        doc.text("Ventas por método de pago:", 20, 120);
+        let yPos = 127;
+        
+        const salesByPayment = {
+            efectivo: 0,
+            yape: 0,
+            transferencia: 0,
+            caja: 0
+        };
+        
+        sales.forEach(sale => {
+            salesByPayment[sale.paymentMethod] += sale.amount;
+        });
+        
+        Object.keys(salesByPayment).forEach(method => {
+            if (salesByPayment[method] > 0) {
+                doc.text(`${method.charAt(0).toUpperCase() + method.slice(1)}: S/ ${salesByPayment[method].toFixed(2)}`, 25, yPos);
+                yPos += 7;
+            }
+        });
+        
+        // Gastos por categoría
+        yPos += 10;
+        doc.text("Gastos por categoría:", 20, yPos);
+        yPos += 7;
+        
+        const expensesByCategory = {};
+        categories.expense.forEach(category => {
+            expensesByCategory[category] = 0;
+        });
+        
+        expenses.forEach(expense => {
+            expensesByCategory[expense.category] += expense.amount;
+        });
+        
+        Object.keys(expensesByCategory).forEach(category => {
+            if (expensesByCategory[category] > 0) {
+                doc.text(`${category}: S/ ${expensesByCategory[category].toFixed(2)}`, 25, yPos);
+                yPos += 7;
+            }
+        });
+        
+        // Detalle de transacciones
+        yPos += 10;
+        if (yPos > 240) {
+            doc.addPage();
+            yPos = 20;
         }
+        
+        doc.setFontSize(16);
+        doc.text("DETALLE DE TRANSACCIONES", 20, yPos);
+        yPos += 10;
+        
+        // Tabla de transacciones
+        const transactionsData = transactions.map(t => {
+            if (t.type === 'sale') {
+                return [
+                    t.date.split(' ')[0],
+                    'VENTA',
+                    t.product,
+                    t.quantity + (predefinedProducts[t.product]?.tipo === "fijo" ? " unid" : " kg"),
+                    `S/ ${t.price.toFixed(2)}`,
+                    `S/ ${t.amount.toFixed(2)}`,
+                    t.paymentMethod,
+                    t.user || 'N/A'
+                ];
+            } else {
+                return [
+                    t.date.split(' ')[0],
+                    'GASTO',
+                    t.description,
+                    t.category,
+                    `S/ ${t.amount.toFixed(2)}`,
+                    '',
+                    t.paymentMethod,
+                    t.user || 'N/A'
+                ];
+            }
+        });
+        
+        doc.autoTable({
+            startY: yPos,
+            head: [['Fecha', 'Tipo', 'Descripción', 'Detalles', 'Monto', '', 'Pago', 'Usuario']],
+            body: transactionsData,
+            theme: 'grid',
+            headStyles: {
+                fillColor: [80, 80, 80],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold'
+            },
+            alternateRowStyles: {
+                fillColor: [240, 240, 240]
+            },
+            didDrawCell: function(data) {
+                if (data.section === 'body' && data.column.index === 1) {
+                    if (data.cell.raw === 'VENTA') {
+                        doc.setFillColor(16, 172, 132);
+                    } else if (data.cell.raw === 'GASTO') {
+                        doc.setFillColor(238, 82, 83);
+                    }
+                    doc.circle(data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, 3, 'F');
+                }
+            }
+        });
+        
+        // Guardar PDF
+        doc.save(`Reporte_Completo_Anyela_${dateStr.replace(/\//g, '-')}.pdf`);
+        showNotification('✅ Reporte completo generado correctamente', 'success');
+        
+    } catch (error) {
+        console.error("Error al generar reporte completo:", error);
+        showNotification('❌ Error al generar el reporte completo', 'error');
+    }
+}
 
 
       

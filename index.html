@@ -2156,61 +2156,105 @@
         }
         
         // Función para reporte de gastos
-        function generateExpensesReport(expensesData) {
+        function generateExpensesReport() {
             const doc = new jsPDF();
             const now = new Date();
             const dateStr = now.toLocaleDateString();
+            const timeStr = now.toLocaleTimeString();
             
-            // Encabezado
+            // Encabezado del reporte
             doc.setFontSize(20);
-            doc.text("ANÁLISIS DE GASTOS - Anyela", 105, 20, { align: "center" });
+            doc.setTextColor(40, 40, 40);
+            doc.text("REPORTE DE GASTOS - Anyela", 105, 20, { align: "center" });
+            
             doc.setFontSize(12);
-            doc.text(`Generado el: ${dateStr}`, 105, 30, { align: "center" });
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Generado el: ${dateStr} a las ${timeStr}`, 105, 30, { align: "center" });
             
-            // Resumen
-            const totalExpenses = expensesData.reduce((sum, t) => sum + t.amount, 0);
-            doc.setFontSize(14);
-            doc.text(`Total de gastos: S/ ${totalExpenses.toFixed(2)}`, 20, 45);
-            doc.text(`Cantidad de transacciones: ${expensesData.length}`, 20, 52);
+            // Línea separadora
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 35, 190, 35);
             
-            // Categoría con más gastos
-            const categoryStats = {};
-            expensesData.forEach(expense => {
-                if (!categoryStats[expense.category]) {
-                    categoryStats[expense.category] = 0;
-                }
-                categoryStats[expense.category] += expense.amount;
+            // Resumen de gastos
+            const totalExpenses = transactions
+                .filter(t => t.type === 'expense')
+                .reduce((sum, t) => sum + t.amount, 0);
+                
+            const totalExpensesCount = transactions.filter(t => t.type === 'expense').length;
+            
+            doc.setFontSize(16);
+            doc.setTextColor(50, 50, 50);
+            doc.text("RESUMEN DE GASTOS", 20, 45);
+            
+            doc.setFontSize(12);
+            doc.setTextColor(80, 80, 80);
+            doc.text(`Total de gastos: S/ ${totalExpenses.toFixed(2)}`, 20, 55);
+            doc.text(`Cantidad de transacciones: ${totalExpensesCount}`, 20, 62);
+            
+            // Gastos por categoría
+            const expensesByCategory = {};
+            categories.expense.forEach(category => {
+                expensesByCategory[category] = 0;
             });
             
-            let topCategory = '';
-            let topAmount = 0;
-            Object.entries(categoryStats).forEach(([category, amount]) => {
-                if (amount > topAmount) {
-                    topCategory = category;
-                    topAmount = amount;
+            transactions
+                .filter(t => t.type === 'expense')
+                .forEach(t => {
+                    expensesByCategory[t.category] += t.amount;
+                });
+            
+            doc.text("Gastos por categoría:", 20, 75);
+            let yPos = 82;
+            
+            Object.keys(expensesByCategory).forEach(category => {
+                if (expensesByCategory[category] > 0) {
+                    doc.text(`${category}: S/ ${expensesByCategory[category].toFixed(2)}`, 25, yPos);
+                    yPos += 7;
                 }
             });
             
-            doc.text(`Categoría con más gastos: ${topCategory} (S/ ${topAmount.toFixed(2)})`, 20, 59);
+            // Detalle de gastos
+            yPos += 10;
+            if (yPos > 240) {
+                doc.addPage();
+                yPos = 20;
+            }
             
-            // Tabla detallada
-            const tableData = expensesData.map(expense => [
-                expense.date.split(' ')[0],
-                expense.description,
-                expense.category,
-                `S/ ${expense.amount.toFixed(2)}`,
-                expense.paymentMethod
-            ]);
+            doc.setFontSize(16);
+            doc.setTextColor(50, 50, 50);
+            doc.text("DETALLE DE GASTOS", 20, yPos);
+            yPos += 10;
+            
+            // Tabla de gastos
+            const expensesData = transactions
+                .filter(t => t.type === 'expense')
+                .map(t => [
+                    t.date.split(' ')[0],
+                    t.description,
+                    t.category,
+                    `S/ ${t.amount.toFixed(2)}`,
+                    t.paymentMethod,
+                    t.user
+                ]);
             
             doc.autoTable({
-                startY: 70,
-                head: [['Fecha', 'Descripción', 'Categoría', 'Monto', 'Pago']],
-                body: tableData,
-                theme: 'grid'
+                startY: yPos,
+                head: [['Fecha', 'Descripción', 'Categoría', 'Monto', 'Pago', 'Usuario']],
+                body: expensesData,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [222, 66, 66],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold'
+                },
+                alternateRowStyles: {
+                    fillColor: [240, 240, 240]
+                }
             });
             
-            doc.save(`Gastos_${dateStr.replace(/\//g, '-')}.pdf`);
-            showNotification('Reporte de gastos generado', 'success');
+            // Guardar PDF
+            doc.save(`Reporte_Gastos_Anyela_${dateStr.replace(/\//g, '-')}.pdf`);
+            showNotification('✅ Reporte de gastos generado correctamente', 'success');
         }
         
 

@@ -2304,6 +2304,157 @@
         
 
 
+
+      // Función para generar reporte ejecutivo
+function generateExecutiveReport(transactionsData) {
+    const doc = new jsPDF();
+    const now = new Date();
+    const dateStr = now.toLocaleDateString();
+    const timeStr = now.toLocaleTimeString();
+    
+    // Encabezado del reporte
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text("REPORTE EJECUTIVO - Anyela", 105, 20, { align: "center" });
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generado el: ${dateStr} a las ${timeStr}`, 105, 30, { align: "center" });
+    
+    // Línea separadora
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, 35, 190, 35);
+    
+    // Resumen ejecutivo
+    const sales = transactionsData.filter(t => t.type === 'sale');
+    const expenses = transactionsData.filter(t => t.type === 'expense');
+    
+    const totalSales = sales.reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+    const balance = totalSales - totalExpenses;
+    
+    // KPIs principales
+    doc.setFontSize(16);
+    doc.setTextColor(50, 50, 50);
+    doc.text("INDICADORES PRINCIPALES", 20, 45);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Ventas totales: S/ ${totalSales.toFixed(2)}`, 20, 55);
+    doc.text(`Gastos totales: S/ ${totalExpenses.toFixed(2)}`, 20, 62);
+    doc.setTextColor(balance >= 0 ? [16, 172, 132] : [238, 82, 83]);
+    doc.text(`Balance neto: S/ ${balance.toFixed(2)}`, 20, 69);
+    
+    // Producto más vendido
+    const productStats = {};
+    sales.forEach(sale => {
+        if (!productStats[sale.product]) {
+            productStats[sale.product] = { quantity: 0, amount: 0 };
+        }
+        productStats[sale.product].quantity += sale.quantity;
+        productStats[sale.product].amount += sale.amount;
+    });
+    
+    let topProduct = '';
+    let topQuantity = 0;
+    let topAmount = 0;
+    
+    Object.entries(productStats).forEach(([product, data]) => {
+        if (data.quantity > topQuantity) {
+            topProduct = product;
+            topQuantity = data.quantity;
+            topAmount = data.amount;
+        }
+    });
+    
+    doc.setTextColor(80, 80, 80);
+    doc.text("Producto más vendido:", 20, 79);
+    doc.text(`${topProduct} - ${topQuantity} ${predefinedProducts[topProduct]?.tipo === "fijo" ? "unidades" : "kg"}`, 25, 86);
+    doc.text(`Generó: S/ ${topAmount.toFixed(2)}`, 25, 93);
+    
+    // Métodos de pago más utilizados
+    const paymentStats = {};
+    sales.forEach(sale => {
+        if (!paymentStats[sale.paymentMethod]) {
+            paymentStats[sale.paymentMethod] = 0;
+        }
+        paymentStats[sale.paymentMethod] += sale.amount;
+    });
+    
+    let yPos = 103;
+    doc.text("Métodos de pago más utilizados:", 20, yPos);
+    yPos += 7;
+    
+    // Ordenar métodos de pago por monto
+    const sortedPayments = Object.entries(paymentStats)
+        .sort((a, b) => b[1] - a[1]);
+    
+    sortedPayments.forEach(([method, amount]) => {
+        const percentage = (amount / totalSales) * 100;
+        doc.text(`${method}: S/ ${amount.toFixed(2)} (${percentage.toFixed(1)}%)`, 25, yPos);
+        yPos += 7;
+    });
+    
+    // Gastos por categoría
+    const expensesByCategory = {};
+    categories.expense.forEach(category => {
+        expensesByCategory[category] = 0;
+    });
+    
+    expenses.forEach(expense => {
+        expensesByCategory[expense.category] += expense.amount;
+    });
+    
+    yPos += 10;
+    doc.text("Gastos por categoría:", 20, yPos);
+    yPos += 7;
+    
+    // Ordenar categorías de gastos por monto
+    const sortedExpenses = Object.entries(expensesByCategory)
+        .filter(([_, amount]) => amount > 0)
+        .sort((a, b) => b[1] - a[1]);
+    
+    sortedExpenses.forEach(([category, amount]) => {
+        const percentage = (amount / totalExpenses) * 100;
+        doc.text(`${category}: S/ ${amount.toFixed(2)} (${percentage.toFixed(1)}%)`, 25, yPos);
+        yPos += 7;
+    });
+    
+    // Gráfico de distribución (simulado con texto)
+    yPos += 10;
+    if (yPos > 240) {
+        doc.addPage();
+        yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.text("DISTRIBUCIÓN DE VENTAS", 20, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(10);
+    sortedPayments.forEach(([method, amount]) => {
+        const percentage = (amount / totalSales) * 100;
+        const barWidth = (percentage / 100) * 170;
+        
+        doc.setFillColor(46, 134, 222);
+        doc.rect(20, yPos, barWidth, 6, 'F');
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${method}: ${percentage.toFixed(1)}%`, 25, yPos + 4.5);
+        
+        yPos += 10;
+    });
+    
+    // Guardar PDF
+    doc.save(`Reporte_Ejecutivo_Anyela_${dateStr.replace(/\//g, '-')}.pdf`);
+    showNotification('✅ Reporte ejecutivo generado correctamente', 'success');
+}
+
+
+
+
+
+      
+
   // Configurar event listeners para el modal de confirmación
         confirmCancelBtn.addEventListener('click', () => {
             customConfirmModal.style.display = 'none';
@@ -2590,108 +2741,200 @@ function generateFullReport() {
             }
         }
 
-        
+
+
+
+      
         // Función para reporte detallado
-        function generateDetailedReport(transactionsData) {
-            const doc = new jsPDF();
-            const now = new Date();
-            const dateStr = now.toLocaleDateString();
-            
-            // Encabezado
-            doc.setFontSize(20);
-            doc.text("REPORTE DETALLADO - Anyela", 105, 20, { align: "center" });
-            
-            // Resumen general
-            const sales = transactionsData.filter(t => t.type === 'sale');
-            const expenses = transactionsData.filter(t => t.type === 'expense');
-            
-            const totalSales = sales.reduce((sum, t) => sum + t.amount, 0);
-            const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
-            const balance = totalSales - totalExpenses;
-            
-            doc.setFontSize(12);
-            doc.text(`Período: ${document.getElementById('history-date-from').value} a ${document.getElementById('history-date-to').value}`, 105, 30, { align: "center" });
-            doc.text(`Ventas totales: S/ ${totalSales.toFixed(2)}`, 20, 45);
-            doc.text(`Gastos totales: S/ ${totalExpenses.toFixed(2)}`, 20, 52);
-            doc.text(`Balance: S/ ${balance.toFixed(2)}`, 20, 59);
-            
-            // Producto más vendido
-            const productStats = {};
-            sales.forEach(sale => {
-                if (!productStats[sale.product]) {
-                    productStats[sale.product] = { quantity: 0, amount: 0 };
-                }
-                productStats[sale.product].quantity += sale.quantity;
-                productStats[sale.product].amount += sale.amount;
-            });
-            
-            let topProduct = '';
-            let topQuantity = 0;
-            Object.entries(productStats).forEach(([product, data]) => {
-                if (data.quantity > topQuantity) {
-                    topProduct = product;
-                    topQuantity = data.quantity;
-                }
-            });
-            
-            doc.text(`Producto más vendido: ${topProduct} (${topQuantity} kg)`, 20, 66);
-            
-            // Métodos de pago
-            const paymentStats = {};
-            sales.forEach(sale => {
-                if (!paymentStats[sale.paymentMethod]) {
-                    paymentStats[sale.paymentMethod] = 0;
-                }
-                paymentStats[sale.paymentMethod] += sale.amount;
-            });
-            
-            let yPos = 80;
-            doc.text("Métodos de pago:", 20, yPos);
-            yPos += 7;
-            
-            Object.entries(paymentStats).forEach(([method, amount]) => {
-                const percentage = (amount / totalSales) * 100;
-                doc.text(`${method}: S/ ${amount.toFixed(2)} (${percentage.toFixed(1)}%)`, 25, yPos);
-                yPos += 7;
-            });
-            
-            // Detalle de transacciones
-            yPos += 10;
-            if (yPos > 200) {
-                doc.addPage();
-                yPos = 20;
+        
+            // Función para reporte completo mejorado
+        function generateDetailedReport() {
+        try {
+        const doc = new jsPDF();
+        const now = new Date();
+        const dateStr = now.toLocaleDateString();
+        const timeStr = now.toLocaleTimeString();
+        
+        // Encabezado
+        doc.setFontSize(20);
+        doc.text("REPORTE COMPLETO - Anyela", 105, 20, { align: "center" });
+        
+        doc.setFontSize(12);
+        doc.text(`Generado el: ${dateStr} a las ${timeStr}`, 105, 30, { align: "center" });
+        
+        // Línea separadora
+        doc.setDrawColor(200, 200, 200);
+        doc.line(20, 35, 190, 35);
+        
+        // Resumen general
+        const sales = transactions.filter(t => t.type === 'sale');
+        const expenses = transactions.filter(t => t.type === 'expense');
+        
+        const totalSales = sales.reduce((sum, t) => sum + t.amount, 0);
+        const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+        const balance = totalSales - totalExpenses;
+        
+        doc.setFontSize(16);
+        doc.text("RESUMEN GENERAL", 20, 45);
+        
+        doc.setFontSize(12);
+        doc.text(`Total de ventas: S/ ${totalSales.toFixed(2)}`, 20, 55);
+        doc.text(`Total de gastos: S/ ${totalExpenses.toFixed(2)}`, 20, 62);
+        doc.setTextColor(balance >= 0 ? [16, 172, 132] : [238, 82, 83]);
+        doc.text(`Balance: S/ ${balance.toFixed(2)}`, 20, 69);
+        
+        // Estado de caja
+        doc.setTextColor(80, 80, 80);
+        doc.text(`Efectivo en caja: S/ ${cashData.cash.toFixed(2)}`, 20, 79);
+        doc.text(`Vuelto disponible: S/ ${cashData.change.toFixed(2)}`, 20, 86);
+        
+        // ANÁLISIS DE PRODUCTOS - LO MÁS VENDIDO
+        const productStats = {};
+        sales.forEach(sale => {
+            if (!productStats[sale.product]) {
+                productStats[sale.product] = { quantity: 0, amount: 0 };
             }
-            
-            doc.setFontSize(14);
-            doc.text("DETALLE DE TRANSACCIONES", 20, yPos);
-            yPos += 10;
-            
-            const tableData = transactionsData.map(transaction => [
-                transaction.date.split(' ')[0],
-                transaction.type === 'sale' ? transaction.product : transaction.description,
-                transaction.type,
-                transaction.type === 'sale' ? transaction.quantity + (predefinedProducts[transaction.product]?.tipo === "fijo" ? " unid" : " kg") : '-',
-                transaction.type === 'sale' ? `S/ ${transaction.price.toFixed(2)}` : '-',
-                `S/ ${transaction.amount.toFixed(2)}`,
-                transaction.paymentMethod || '-'
-            ]);
-            
-            doc.autoTable({
-                startY: yPos,
-                head: [['Fecha', 'Descripción', 'Tipo', 'Cantidad', 'Precio', 'Total', 'Pago']],
-                body: tableData,
-                theme: 'grid',
-                headStyles: {
-                    fillColor: [46, 134, 222],
-                    textColor: [255, 255, 255],
-                    fontStyle: 'bold'
-                }
-            });
-            
-            doc.save(`Reporte_Detallado_${dateStr.replace(/\//g, '-')}.pdf`);
-            showNotification('Reporte detallado generado', 'success');
+            productStats[sale.product].quantity += sale.quantity;
+            productStats[sale.product].amount += sale.amount;
+        });
+        
+        // Encontrar producto más vendido
+        let topProduct = '';
+        let topQuantity = 0;
+        let topAmount = 0;
+        
+        Object.entries(productStats).forEach(([product, data]) => {
+            if (data.quantity > topQuantity) {
+                topProduct = product;
+                topQuantity = data.quantity;
+                topAmount = data.amount;
+            }
+        });
+        
+        doc.text("Producto más vendido:", 20, 96);
+        doc.text(`${topProduct} - ${topQuantity} ${predefinedProducts[topProduct]?.tipo === "fijo" ? "unidades" : "kg"}`, 25, 103);
+        doc.text(`Generó: S/ ${topAmount.toFixed(2)}`, 25, 110);
+        
+        // Ventas por método de pago
+        doc.text("Ventas por método de pago:", 20, 120);
+        let yPos = 127;
+        
+        const salesByPayment = {
+            efectivo: 0,
+            yape: 0,
+            transferencia: 0,
+            caja: 0
+        };
+        
+        sales.forEach(sale => {
+            salesByPayment[sale.paymentMethod] += sale.amount;
+        });
+        
+        Object.keys(salesByPayment).forEach(method => {
+            if (salesByPayment[method] > 0) {
+                doc.text(`${method.charAt(0).toUpperCase() + method.slice(1)}: S/ ${salesByPayment[method].toFixed(2)}`, 25, yPos);
+                yPos += 7;
+            }
+        });
+        
+        // Gastos por categoría
+        yPos += 10;
+        doc.text("Gastos por categoría:", 20, yPos);
+        yPos += 7;
+        
+        const expensesByCategory = {};
+        categories.expense.forEach(category => {
+            expensesByCategory[category] = 0;
+        });
+        
+        expenses.forEach(expense => {
+            expensesByCategory[expense.category] += expense.amount;
+        });
+        
+        Object.keys(expensesByCategory).forEach(category => {
+            if (expensesByCategory[category] > 0) {
+                doc.text(`${category}: S/ ${expensesByCategory[category].toFixed(2)}`, 25, yPos);
+                yPos += 7;
+            }
+        });
+        
+        // Detalle de transacciones
+        yPos += 10;
+        if (yPos > 240) {
+            doc.addPage();
+            yPos = 20;
         }
         
+        doc.setFontSize(16);
+        doc.text("DETALLE DE TRANSACCIONES", 20, yPos);
+        yPos += 10;
+        
+        // Tabla de transacciones
+        const transactionsData = transactions.map(t => {
+            if (t.type === 'sale') {
+                return [
+                    t.date.split(' ')[0],
+                    'VENTA',
+                    t.product,
+                    t.quantity + (predefinedProducts[t.product]?.tipo === "fijo" ? " unid" : " kg"),
+                    `S/ ${t.price.toFixed(2)}`,
+                    `S/ ${t.amount.toFixed(2)}`,
+                    t.paymentMethod,
+                    t.user || 'N/A'
+                ];
+            } else {
+                return [
+                    t.date.split(' ')[0],
+                    'GASTO',
+                    t.description,
+                    t.category,
+                    `S/ ${t.amount.toFixed(2)}`,
+                    '',
+                    t.paymentMethod,
+                    t.user || 'N/A'
+                ];
+            }
+        });
+        
+        doc.autoTable({
+            startY: yPos,
+            head: [['Fecha', 'Tipo', 'Descripción', 'Detalles', 'Monto', '', 'Pago', 'Usuario']],
+            body: transactionsData,
+            theme: 'grid',
+            headStyles: {
+                fillColor: [80, 80, 80],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold'
+            },
+            alternateRowStyles: {
+                fillColor: [240, 240, 240]
+            },
+            didDrawCell: function(data) {
+                if (data.section === 'body' && data.column.index === 1) {
+                    if (data.cell.raw === 'VENTA') {
+                        doc.setFillColor(16, 172, 132);
+                    } else if (data.cell.raw === 'GASTO') {
+                        doc.setFillColor(238, 82, 83);
+                    }
+                    doc.circle(data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, 3, 'F');
+                }
+            }
+        });
+        
+        // Guardar PDF
+        doc.save(`Reporte_Completo_Anyela_${dateStr.replace(/\//g, '-')}.pdf`);
+        showNotification('✅ Reporte completo generado correctamente', 'success');
+        
+    } catch (error) {
+        console.error("Error al generar reporte completo:", error);
+        showNotification('❌ Error al generar el reporte completo', 'error');
+    }
+}
+
+
+
+
+      
         // Función para imprimir historial
         function printHistory() {
             const printContent = document.getElementById('history').innerHTML;

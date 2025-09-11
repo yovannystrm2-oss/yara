@@ -1196,8 +1196,8 @@
                 <i class="fas fa-moon"></i>
             </div>
             <div class="header-content">
-                <h1><i class="fas fa-store"></i> Anyela v2 </h1>
-                <p>By: Yovanny</p>
+                <h1><i class="fas fa-store"></i> Anyela</h1>
+                <p>Actualizado recientemente</p>
             </div>
             <div class="user-info" id="user-info">
                 <i class="fas fa-user"></i>
@@ -1285,7 +1285,6 @@
                 </div>
             </div>
         </div>
-        
         <div class="tab-content" id="expenses">
             <div class="card">
                 <h2><i class="fas fa-money-bill"></i> Registrar Gasto</h2>
@@ -1464,7 +1463,13 @@
                         <i class="fas fa-print"></i> Imprimir Historial
                     </button>
                 </div>
+               
             </div>
+            
+ <div class="card">
+                       <h2><i class="fas fa-archive"></i> Registros</h2>
+                             <div id="archived-days-list"></div>
+    </div>
         </div>
         
         <div class="tab-content" id="config">
@@ -1497,6 +1502,8 @@
                 </button>
             </div>
         </div>
+        
+
     </div>
 
     <!-- Sistema de notificaciones -->
@@ -1677,18 +1684,41 @@
         // Datos iniciales
         let transactions = [];
         let dailyTransactions = []; // Transacciones del día actual
-        let categories = {
-            sale: ["Carne de Chancho", "Chuleta", "Otros Cortes", "Bolsa"],
-            expense: ["Almuerzo", "Transporte", "Compras", "Alquiler", "Facturas", "Otros gastos"]
-        };
+      let categories = {
+         sale: [
+        "Carne de Chancho",
+        "Chuleta",
+        "Otros Cortes",
+        "Bolsa",
+        "Costilla",
+        "Pierna y Brazo",
+        "Morcilla",
+        "Pata",
+        "Cuero"
+    ],
+    expense: [
+        "Almuerzo",
+        "Transporte",
+        "Compras",
+        "Alquiler",
+        "Facturas",
+        "Otros gastos"
+    ]
+};
         
+
         // Productos predefinidos con precios
         const predefinedProducts = {
             "Carne de Chancho": { precio: 23, tipo: "por-kg", icono: "drumstick-bite" },
-            "Chuleta": { precio: 25, tipo: "por-kg", icono: "bacon" },
-            "Otros Cortes": { precio: 20, tipo: "por-kg", icono: "utensils" },
-            "Bolsa": { precio: 1, tipo: "fijo", icono: "shopping-bag" }
-        };
+              "Chuleta": { precio: 25, tipo: "por-kg", icono: "bacon" },
+             "Otros Cortes": { precio: 20, tipo: "por-kg", icono: "utensils" },
+            "Bolsa": { precio: 1, tipo: "fijo", icono: "shopping-bag" },
+         "Costilla": { precio: 22, tipo: "por-kg", icono: "bone" },
+            "Pierna y Brazo": { precio: 21, tipo: "por-kg", icono: "drumstick-bite" },
+         "Morcilla": { precio: 18, tipo: "por-kg", icono: "hotdog" },
+         "Pata": { precio: 19, tipo: "por-kg", icono: "drumstick-bite" },
+            "Cuero": { precio: 17, tipo: "por-kg", icono: "bacon" }
+};
         
         let cashData = {
             cash: 0,
@@ -1711,7 +1741,8 @@
         
         let confirmCallback = null;
 
-        
+        let currentDay = new Date().toLocaleDateString();
+
         // Elementos del DOM
         const balanceEl = document.getElementById('balance');
         const totalSalesEl = document.getElementById('total-sales');
@@ -1810,6 +1841,8 @@
             renderCategoriesList();
             updateCashDisplay();
             updateHistory();
+         listenToTransactions();
+         renderArchivedDaysList();
             // Configurar event listeners
             addSaleBtn.addEventListener('click', addSale);
             addExpenseBtn.addEventListener('click', addExpense);
@@ -1823,7 +1856,19 @@
             closeReportModalBtn.addEventListener('click', () => {
                 reportModal.style.display = 'none';
             });
-            syncDataBtn.addEventListener('click', syncWithFirebase);
+           syncDataBtn.addEventListener('click', async () => {
+    await syncWithFirebase();
+    await loadFromFirebase();
+    updateTransactionLists();
+    updateSummary();
+    updateCategories();
+    updateProductGrid();
+    renderCategoriesList();
+    updateCashDisplay();
+    updateHistory();
+    showNotification('✅ Sincronización completa con Firebase.', 'success');
+    currentDay = new Date().toLocaleDateString();
+});
             loginBtn.addEventListener('click', login);
             logoutBtn.addEventListener('click', logout);
             calculateChangeBtn.addEventListener('click', calculateChange);
@@ -1831,7 +1876,15 @@
             cancelEditBtn.addEventListener('click', closeEditModal);
             exportDataBtn.addEventListener('click', exportData);
             printHistoryBtn.addEventListener('click', printHistory);
-            
+
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) checkDayChange();
+});
+checkDayChange();
+
+
+
             // Configurar opciones de reporte
             reportOptions.forEach(option => {
                 option.addEventListener('click', () => {
@@ -1876,14 +1929,17 @@
                     }
                 });
             });
-            
+              historyDateRangeEl.value = "today";
+    customDateRangeEl.style.display = 'none';
+
+
             // Establecer fechas por defecto para los filtros
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            
-            historyDateFromEl.value = formatDateForInput(yesterday);
-            historyDateToEl.value = formatDateForInput(today);
+              const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    historyDateFromEl.value = formatDateForInput(yesterday);
+    historyDateToEl.value = formatDateForInput(today);
+
             
             // Verificar si hay tema guardado
             if (localStorage.getItem('theme') === 'light') {
@@ -1896,6 +1952,38 @@
             window.addEventListener('online', checkConnectionStatus);
             window.addEventListener('offline', checkConnectionStatus);
         }
+
+
+
+
+
+function listenToTransactions() {
+      db.collection('transactions').onSnapshot(snapshot => {
+        transactions = [];
+        snapshot.forEach(doc => {
+            transactions.push(doc.data());
+        });
+
+        // Actualiza dailyTransactions con las del día actual (comparación robusta)
+        const today = new Date();
+        dailyTransactions = transactions.filter(t => {
+            if (!t.date) return false;
+            // t.date: "7/9/2025 23:01:28"
+            const [d, m, y] = t.date.split(' ')[0].split('/');
+            return (
+                Number(d) === today.getDate() &&
+                Number(m) === today.getMonth() + 1 &&
+                Number(y) === today.getFullYear()
+            );
+        });
+
+        updateTransactionLists();
+        updateSummary();
+        updateHistory();
+    });
+}
+
+
         
         // Función de login
         function login() {
@@ -2025,6 +2113,15 @@
             });
         }
         
+
+
+
+
+
+        
+
+
+        
         // Función para guardar los cambios de edición
         async function saveEdit() {
             if (!editingTransaction) return;
@@ -2139,7 +2236,8 @@
                     generateExpensesReport(sortedTransactions);
                     break;
                 case 'detailed':
-                    generateDetailedReport(sortedTransactions);
+                       generateDetailedReport(sortedTransactions); // sortedTransactions viene de filteredTransactions
+
                     break;
             }
         }
@@ -2161,6 +2259,8 @@
             doc.text(`Generado el: ${dateStr} a las ${timeStr}`, 105, 30, { align: "center" });
             
             // Línea separadora
+           
+
             doc.setDrawColor(200, 200, 200);
             doc.line(20, 35, 190, 35);
             
@@ -2701,6 +2801,7 @@ function generateDetailedReport() {
     }
 }
 
+
 // Configurar event listeners para el modal de confirmación
 confirmCancelBtn.addEventListener('click', () => {
     customConfirmModal.style.display = 'none';
@@ -2719,6 +2820,29 @@ customConfirmModal.addEventListener('click', (e) => {
         customConfirmModal.style.display = 'none';
     }
 });
+
+
+
+async function deleteSalesHistory() {
+    // Eliminar ventas del array local
+    transactions = transactions.filter(t => t.type !== 'sale');
+    dailyTransactions = dailyTransactions.filter(t => t.type !== 'sale');
+
+    // Eliminar ventas de Firebase
+    const snapshot = await db.collection('transactions').where('type', '==', 'sale').get();
+    const batch = db.batch();
+    snapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    updateTransactionLists();
+    updateSummary();
+    updateHistory();
+    showNotification('✅ Historial de ventas borrado correctamente.', 'success');
+}
+
+
 
 // Función para mostrar confirmación personalizada
 function showCustomConfirm(options) {
@@ -2890,6 +3014,14 @@ async function syncWithFirebase() {
 async function loadFromFirebase() {
     if (!isOnline) {
         showNotification('Sin conexión. No se pueden cargar datos desde Firebase', 'warning');
+        // Cargar categorías desde localStorage si existen
+        const localCategories = localStorage.getItem('categories_backup');
+        if (localCategories) {
+            categories = JSON.parse(localCategories);
+            updateCategories();
+            updateProductGrid();
+            renderCategoriesList();
+        }
         return;
     }
     
@@ -2908,7 +3040,7 @@ async function loadFromFirebase() {
         if (doc.exists) {
             const data = doc.data();
             categories = data.categories || {
-                sale: ["Carne de Chancho", "Chuleta", "Otros Cortes", "Bolsa"],
+                sale: ["Carne de Chancho", "Chuleta", "Otros Cortes", "Bolsa","Costilla",   "Pierna y Brazo", "Morcilla","Pata","Cuero"],
                 expense: ["Almuerzo", "Transporte", "Compras", "Alquiler", "Facturas", "Otros gastos"]
             };
             cashData = data.cashData || {
@@ -2927,6 +3059,313 @@ async function loadFromFirebase() {
         showNotification('Error al cargar datos desde Firebase', 'error');
     }
 }
+
+
+async function renderArchivedDaysList() {
+    const container = document.getElementById('archived-days-list');
+    container.innerHTML = '<p>Cargando...</p>';
+
+    try {
+        const snapshot = await db.collection('archivedDays').orderBy('date', 'desc').get();
+        if (snapshot.empty) {
+            container.innerHTML = '<p>No hay días archivados.</p>';
+            return;
+        }
+        container.innerHTML = '';
+        snapshot.forEach(doc => {
+            const day = doc.id.replace(/-/g, '/');
+            const item = document.createElement('div');
+            item.className = 'category-item';
+            item.innerHTML = `
+                <span>${day}</span>
+    <div style="display:flex;gap:8px;">
+        <button class="report-btn" title="Reporte PDF" data-day="${doc.id}" style="background:linear-gradient(135deg,#e74c3c,#ff7675);color:#fff;border:none;border-radius:8px;padding:7px 10px;box-shadow:0 2px 6px rgba(0,0,0,0.08);font-size:16px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+            <i class="fas fa-file-pdf"></i>
+        </button>
+        <button class="view-btn" title="Ver Detalles" data-day="${doc.id}" style="background:linear-gradient(135deg,#2e86de,#54a0ff);color:#fff;border:none;border-radius:8px;padding:7px 10px;box-shadow:0 2px 6px rgba(0,0,0,0.08);font-size:16px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+            <i class="fas fa-eye"></i>
+        </button>
+        <button class="delete-btn" title="Eliminar" data-day="${doc.id}" style="background:linear-gradient(135deg,#636e72,#b2bec3);color:#fff;border:none;border-radius:8px;padding:7px 10px;box-shadow:0 2px 6px rgba(0,0,0,0.08);font-size:16px;cursor:pointer;display:flex;align-items:center;gap:4px;">
+            <i class="fas fa-trash"></i>
+        </button>
+    </div>
+`;
+            container.appendChild(item);
+        });
+
+        // Botón PDF
+      container.querySelectorAll('.report-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        const dayId = e.currentTarget.getAttribute('data-day');
+        const doc = await db.collection('archivedDays').doc(dayId).get();
+        if (doc.exists) {
+            const transactions = doc.data().transactions || [];
+            generateDayReportPDF(dayId.replace(/-/g, '/'), transactions);
+        } else {
+            showNotification('No se encontraron transacciones para ese día', 'error');
+        }
+    });
+});
+container.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        const dayId = e.currentTarget.getAttribute('data-day');
+        const doc = await db.collection('archivedDays').doc(dayId).get();
+        if (doc.exists) {
+            const transactions = doc.data().transactions || [];
+            showDaySummaryModal(dayId.replace(/-/g, '/'), transactions);
+        } else {
+            showNotification('No se encontraron transacciones para ese día', 'error');
+        }
+    });
+});
+        // Botón eliminar
+        container.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const dayId = e.currentTarget.getAttribute('data-day');
+                const isConfirmed = await showCustomConfirm({
+                    type: 'delete',
+                    icon: 'trash-alt',
+                    title: 'Eliminar Día Archivado',
+                    message: `¿Está seguro de eliminar el día archivado "${dayId.replace(/-/g, '/')}"?`,
+                    cancelText: 'Cancelar',
+                    okText: 'Eliminar',
+                    okColor: 'linear-gradient(135deg, var(--danger), #FF5253)'
+                });
+                if (!isConfirmed) return;
+                await db.collection('archivedDays').doc(dayId).delete();
+                localStorage.removeItem(`transactions_${dayId}`);
+                showNotification(`Día archivado ${dayId.replace(/-/g, '/')} eliminado.`, 'success');
+                renderArchivedDaysList();
+            });
+        });
+    } catch (error) {
+        container.innerHTML = '<p>Error al cargar días archivados.</p>';
+    }
+}
+
+function showDaySummaryModal(day, transactions) {
+    // KPIs
+    const sales = transactions.filter(t => t.type === 'sale');
+    const expenses = transactions.filter(t => t.type === 'expense');
+    const totalSales = sales.reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+    const balance = totalSales - totalExpenses;
+    const totalOrders = sales.length;
+    const totalCustomers = new Set(sales.map(t => t.user)).size;
+    const avgOrder = totalOrders > 0 ? (totalSales / totalOrders) : 0;
+
+    // Tema
+    const isLight = document.body.classList.contains('light-theme');
+    const bgCard = isLight ? '#e3f2fd' : '#263343';
+    const bgDanger = isLight ? '#fff' : '#222f3e';
+    const textMain = isLight ? '#222' : '#f5f5f5';
+    const accent = isLight ? '#2E86DE' : '#54A0FF';
+    const danger = isLight ? '#EE5253' : '#FF5253';
+
+    let html = `
+        <div style="max-width:340px;margin:auto;">
+            <h2 style="text-align:center;color:${accent};margin-bottom:10px;font-size:1.5rem;font-weight:700;">
+                <i class="fas fa-file-alt"></i> Informe resumido del<br>${day}
+            </h2>
+            <p style="text-align:center;color:${isLight ? '#636e72' : '#c8d6e5'};margin-bottom:18px;font-size:0.95rem;">
+                Resumen de ventas y gastos del día.
+            </p>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="background:${bgCard};border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:600;color:${accent};display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-shopping-cart"></i> Ventas de productos:
+                    </span>
+                    <span style="font-weight:600;color:${accent};white-space:nowrap;">S/ ${totalSales.toLocaleString('es-PE', {minimumFractionDigits:2})}</span>
+                </div>
+                <div style="background:${bgDanger};border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border:1px solid ${danger};">
+                    <span style="font-weight:600;color:${danger};display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-receipt"></i> Gastos:
+                    </span>
+                    <span style="font-weight:600;color:${danger};white-space:nowrap;">S/ ${totalExpenses.toLocaleString('es-PE', {minimumFractionDigits:2})}</span>
+                </div>
+                <div style="background:${bgCard};border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:600;color:#10AC84;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-balance-scale"></i> Balance:
+                    </span>
+                    <span style="font-weight:600;color:${balance>=0?'#10AC84':danger};white-space:nowrap;">S/ ${balance.toLocaleString('es-PE', {minimumFractionDigits:2})}</span>
+                </div>
+                <div style="background:${bgCard};border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:600;color:${textMain};display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-list-ol"></i> Total de ventas:
+                    </span>
+                    <span style="color:${textMain};">${totalOrders}</span>
+                </div>
+                <div style="background:${bgCard};border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:600;color:${textMain};display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-users"></i> Número de clientes:
+                    </span>
+                    <span style="color:${textMain};">${totalCustomers}</span>
+                </div>
+                <div style="background:${bgCard};border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:600;color:${textMain};display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-calculator"></i> Promedio por venta:
+                    </span>
+                    <span style="color:${textMain};white-space:nowrap;">S/ ${avgOrder.toLocaleString('es-PE', {minimumFractionDigits:2})}</span>
+                </div>
+            </div>
+            <h3 style="margin:20px 0 10px 0;color:${accent};text-align:center;font-size:1.1rem;">Detalle de transacciones</h3>
+            <div style="max-height:26vh;overflow:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;background:${bgDanger};color:${textMain};border-radius:8px;">
+                    <thead>
+                        <tr style="background:${bgCard};color:${accent};">
+                            <th style="padding:6px;">Tipo</th>
+                            <th style="padding:6px;">Producto/Descripción</th>
+                            <th style="padding:6px;">Cantidad</th>
+                            <th style="padding:6px;">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.length === 0 ? `
+                            <tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px;">No hay transacciones para este día.</td></tr>
+                        ` : transactions.map(t => `
+                            <tr style="background:${t.type==='sale'?bgCard:bgDanger};color:${t.type==='expense'?danger:textMain};">
+                                <td style="padding:6px;">${t.type === 'sale' ? 'Venta' : 'Gasto'}</td>
+                                <td style="padding:6px;">${t.product || t.description}</td>
+                                <td style="padding:6px;">${t.type === 'sale' ? (t.quantity + (predefinedProducts[t.product]?.tipo === "fijo" ? " unid" : " kg")) : ''}</td>
+                                <td style="padding:6px;white-space:nowrap;">S/ ${t.amount.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    showModal(html);
+}
+
+function showModal(html) {
+    let modal = document.getElementById('preview-modal');
+    const isLight = document.body.classList.contains('light-theme');
+    const closeColor = isLight ? '#222' : '#fff';
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'preview-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100vw';
+        modal.style.height = '100vh';
+        modal.style.background = 'rgba(0,0,0,0.7)';
+        modal.style.zIndex = '2000';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.innerHTML = `
+            <div style="background:var(--card-bg);padding:30px;border-radius:15px;max-width:90vw;max-height:80vh;overflow:auto;position:relative;">
+                <button id="close-preview-modal" style="position:absolute;top:10px;right:10px;font-size:20px;background:none;border:none;color:${closeColor};cursor:pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div id="preview-modal-content"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.querySelector('#close-preview-modal').onclick = () => modal.style.display = 'none';
+    } else {
+        // Actualiza el color de la X cada vez que se muestra el modal
+        const closeBtn = modal.querySelector('#close-preview-modal');
+        if (closeBtn) closeBtn.style.color = closeColor;
+    }
+    modal.querySelector('#preview-modal-content').innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+
+function showDayPreviewModal(day, transactions) {
+    const modal = document.getElementById('day-preview-modal');
+    const content = document.getElementById('day-preview-content');
+
+    // Cálculos
+    const sales = transactions.filter(t => t.type === 'sale');
+    const expenses = transactions.filter(t => t.type === 'expense');
+    const totalSales = sales.reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+    const balance = totalSales - totalExpenses;
+    const totalOrders = sales.length;
+    const totalCustomers = new Set(sales.map(t => t.user)).size;
+    const avgOrder = totalOrders > 0 ? (totalSales / totalOrders) : 0;
+
+    // HTML estilo profesional y LEGIBLE
+    let html = `
+        <h2 style="color:#222;text-align:center;margin-bottom:18px;">
+            <i class="fas fa-file-alt"></i> Informe resumido del ${day}
+        </h2>
+        <div style="margin-bottom:18px;">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="background:#e3f2fd;border-radius:8px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:bold;color:#1565c0;"><i class="fas fa-cash-register"></i> Ventas de productos:</span>
+                    <span style="font-weight:bold;color:#1565c0;">S/ ${totalSales.toLocaleString('es-PE', {minimumFractionDigits:2})}</span>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:bold;color:#b71c1c;"><i class="fas fa-receipt"></i> Gastos:</span>
+                    <span style="font-weight:bold;color:#b71c1c;">S/ ${totalExpenses.toLocaleString('es-PE', {minimumFractionDigits:2})}</span>
+                </div>
+                <div style="background:#e3f2fd;border-radius:8px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:bold;color:#00695c;"><i class="fas fa-balance-scale"></i> Balance:</span>
+                    <span style="font-weight:bold;color:${balance>=0?'#00695c':'#b71c1c'};">S/ ${balance.toLocaleString('es-PE', {minimumFractionDigits:2})}</span>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:bold;color:#222;"><i class="fas fa-shopping-cart"></i> Total de ventas (órdenes):</span>
+                    <span style="color:#222;">${totalOrders}</span>
+                </div>
+                <div style="background:#e3f2fd;border-radius:8px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:bold;color:#222;"><i class="fas fa-users"></i> Número de clientes:</span>
+                    <span style="color:#222;">${totalCustomers}</span>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:bold;color:#222;"><i class="fas fa-calculator"></i> Promedio por venta:</span>
+                    <span style="color:#222;">S/ ${avgOrder.toLocaleString('es-PE', {minimumFractionDigits:2})}</span>
+                </div>
+            </div>
+        </div>
+        <h3 style="margin:20px 0 10px 0;color:#2E86DE;">Detalle de transacciones</h3>
+        <div style="max-height:35vh;overflow:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:14px;background:#fff;color:#222;">
+                <thead>
+                    <tr style="background:#90caf9;">
+                        <th style="padding:8px;">Tipo</th>
+                        <th style="padding:8px;">Producto/Descripción</th>
+                        <th style="padding:8px;">Cantidad</th>
+                        <th style="padding:8px;">Monto</th>
+                        <th style="padding:8px;">Pago</th>
+                        <th style="padding:8px;">Fecha</th>
+                        <th style="padding:8px;">Usuario</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${transactions.length === 0 ? `
+                        <tr><td colspan="7" style="text-align:center;color:#aaa;padding:20px;">No hay transacciones para este día.</td></tr>
+                    ` : transactions.map(t => `
+                        <tr style="background:${t.type==='sale'?'#e3f2fd':'#ffebee'};color:#222;">
+                            <td style="padding:8px;">${t.type === 'sale' ? 'Venta' : 'Gasto'}</td>
+                            <td style="padding:8px;">${t.product || t.description}</td>
+                            <td style="padding:8px;">${t.type === 'sale' ? (t.quantity + (predefinedProducts[t.product]?.tipo === "fijo" ? " unid" : " kg")) : ''}</td>
+                            <td style="padding:8px;">S/ ${t.amount.toFixed(2)}</td>
+                            <td style="padding:8px;">${t.paymentMethod || ''}</td>
+                            <td style="padding:8px;">${t.date}</td>
+                            <td style="padding:8px;">${t.user || ''}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    content.innerHTML = html;
+    modal.style.display = 'flex';
+    document.getElementById('close-day-preview-modal').onclick = () => {
+        modal.style.display = 'none';
+    };
+}
+
+
+// Llama a esta función cuando abras la pestaña de historial o config
+// Por ejemplo, al final de tu init():
+// renderArchivedDaysList();
+
 
 // Mostrar notificación
 function showNotification(message, type = 'success', duration = 5000) {
@@ -3051,6 +3490,8 @@ async function confirmSale() {
 
     // Actualiza la UI primero
     transactions.push(transaction);
+    dailyTransactions.push(transaction); // <-- Agrega esta línea
+
     updateTransactionLists();
     updateSummary();
     updateHistory();
@@ -3114,9 +3555,26 @@ function addSale() {
         showNotification('❌ Por favor, complete cantidad y precio correctamente.', 'error');
         return;
     }
-    
+
+    const now = new Date();
+    const fecha = now.toLocaleDateString();
+    const hora = now.toLocaleTimeString();
     const amount = quantity * price;
-    
+
+    // Crear el objeto transaction antes de hacer push
+    const transaction = {
+        id: Date.now(),
+        type: 'sale',
+        product,
+        quantity,
+        price,
+        description,
+        paymentMethod,
+        amount,
+        date: `${fecha} ${hora}`,
+        user: currentUser.name
+    };
+
     // Mostrar modal de confirmación en lugar de procesar directamente
     showSaleConfirmation({
         product,
@@ -3142,20 +3600,24 @@ function cleanSaleFields() {
 
 // Alternar entre tema oscuro y claro
 function toggleTheme() {
-    const currentTheme = localStorage.getItem('theme');
-
-    if (currentTheme === 'dark') {
-        // Cambiar a claro
-        localStorage.setItem('theme', 'light');
-        document.body.classList.remove('dark');
-        themeSwitchBtn.innerHTML = '<i class="fas fa-sun"></i>';
-        showNotification('Modo claro activado', 'success');
-    } else {
-        // Cambiar a oscuro
+        const isLight = document.body.classList.contains('light-theme');
+    if (isLight) {
+        document.body.classList.remove('light-theme');
         localStorage.setItem('theme', 'dark');
-        document.body.classList.add('dark');
         themeSwitchBtn.innerHTML = '<i class="fas fa-moon"></i>';
         showNotification('Modo oscuro activado', 'success');
+    } else {
+        document.body.classList.add('light-theme');
+        localStorage.setItem('theme', 'light');
+        themeSwitchBtn.innerHTML = '<i class="fas fa-sun"></i>';
+        showNotification('Modo claro activado', 'success');
+    }
+    // Actualiza el color de la X si el modal está abierto
+    const modal = document.getElementById('preview-modal');
+    if (modal) {
+        const isLightNow = document.body.classList.contains('light-theme');
+        const closeBtn = modal.querySelector('#close-preview-modal');
+        if (closeBtn) closeBtn.style.color = isLightNow ? '#222' : '#fff';
     }
 }
     // Añadir un nuevo gasto
@@ -3192,7 +3654,8 @@ function toggleTheme() {
         };
         
         transactions.push(transaction);
-        
+        dailyTransactions.push(transaction); // <-- Nueva línea
+
         // Guardar en Firebase
         try {
             await db.collection('transactions').doc(transaction.id.toString()).set(transaction);
@@ -3367,129 +3830,140 @@ function toggleTheme() {
     }
     
     // Actualizar historial
-    function updateHistory() {
-        const typeFilter = historyTypeEl.value;
-        const paymentFilter = historyPaymentEl.value;
-        const rangeType = historyDateRangeEl.value;
+  function updateHistory() {
+    const typeFilter = historyTypeEl.value;
+    const paymentFilter = historyPaymentEl.value;
+    const rangeType = historyDateRangeEl.value;
+    let transactionsToShow = [];
 
-        // Copiar transacciones
-        let filteredTransactions = [...transactions];
+    // --- NUEVO: cargar transacciones archivadas según el rango ---
+    if (rangeType === 'today') {
+        transactionsToShow = dailyTransactions;
+    } else {
+        // Determinar fechas a cargar según el rango
+        let fromDate, toDate;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-        // Filtro por tipo
-        if (typeFilter !== 'all') {
-            filteredTransactions = filteredTransactions.filter(t => t.type === typeFilter);
-        }
-
-        // Filtro por método de pago
-        if (paymentFilter !== 'all') {
-            filteredTransactions = filteredTransactions.filter(t => t.paymentMethod === paymentFilter);
-        }
-
-        // Filtro por rango de fechas
-        if (rangeType !== 'all') {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            filteredTransactions = filteredTransactions.filter(t => {
-                const transactionDate = parseLocalDate(t.date.split(' ')[0]);
-                transactionDate.setHours(0, 0, 0, 0);
-
-                if (rangeType === 'today') {
-                    return transactionDate.getTime() === today.getTime();
-                } else if (rangeType === 'yesterday') {
-                    const yesterday = new Date(today);
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    return transactionDate.getTime() === yesterday.getTime();
-                } else if (rangeType === 'week') {
-                    const weekStart = new Date(today);
-                    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-                    return transactionDate >= weekStart;
-                } else if (rangeType === 'month') {
-                    return transactionDate.getMonth() === today.getMonth() &&
-                           transactionDate.getFullYear() === today.getFullYear();
-                } else if (rangeType === 'custom') {
-                    const fromDate = new Date(historyDateFromEl.value);
-                    const toDate = new Date(historyDateToEl.value);
-                    toDate.setHours(23, 59, 59, 999);
-                    return transactionDate >= fromDate && transactionDate <= toDate;
-                }
-                return true;
-            });
-        }
-
-        // Ordenar por fecha (más reciente primero)
-        filteredTransactions.sort((a, b) => b.id - a.id);
-
-        // Calcular totales
-        let totalCash = 0;
-        let totalYape = 0;
-        let totalExpenses = 0;
-
-        filteredTransactions.forEach(t => {
-            if (t.type === 'sale') {
-                if (t.paymentMethod === 'efectivo') totalCash += t.amount;
-                if (t.paymentMethod === 'yape') totalYape += t.amount;
-            } else if (t.type === 'expense') {
-                totalExpenses += t.amount;
-            }
-        });
-
-        historyCashEl.textContent = `S/ ${totalCash.toFixed(2)}`;
-        historyYapeEl.textContent = `S/ ${totalYape.toFixed(2)}`;
-        historyExpensesEl.textContent = `S/ ${totalExpenses.toFixed(2)}`;
-
-        // Mostrar historial
-        historyListEl.innerHTML = '';
-
-        if (filteredTransactions.length === 0) {
-            historyListEl.innerHTML = '<p>No hay transacciones que coincidan con los filtros.</p>';
+        if (rangeType === 'yesterday') {
+            fromDate = new Date(today);
+            fromDate.setDate(fromDate.getDate() - 1);
+            toDate = new Date(fromDate);
+        } else if (rangeType === 'week') {
+            fromDate = new Date(today);
+            fromDate.setDate(fromDate.getDate() - today.getDay());
+            toDate = new Date(today);
+        } else if (rangeType === 'month') {
+            fromDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            toDate = new Date(today);
+        } else if (rangeType === 'custom') {
+            fromDate = new Date(historyDateFromEl.value);
+            toDate = new Date(historyDateToEl.value);
         } else {
-            filteredTransactions.forEach(transaction => {
-                const item = document.createElement('div');
-                item.className = 'transaction-item fade-in';
+            // Todas las fechas: cargar todo lo archivado
+            fromDate = new Date(2000, 0, 1);
+            toDate = today;
+        }
 
-                const isSale = transaction.type === 'sale';
-                const paymentClass = `payment-${transaction.paymentMethod}`;
+        // Recorrer días y cargar archivos archivados
+        let date = new Date(fromDate);
+        while (date <= toDate) {
+            const dateStr = date.toLocaleDateString();
+            const dayTransactions = loadTransactionsForDate(dateStr);
+            transactionsToShow = transactionsToShow.concat(dayTransactions);
+            date.setDate(date.getDate() + 1);
+        }
 
-                let actionsHTML = '';
-                if (currentUser && currentUser.role === 'admin') {
-                    actionsHTML = `
-                        <div class="transaction-actions">
-                            <button class="transaction-action-btn edit" onclick="editTransaction(${JSON.stringify(transaction).replace(/"/g, '&quot;')})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="transaction-action-btn delete" onclick="deleteTransaction(${JSON.stringify(transaction).replace(/"/g, '&quot;')})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    `;
-                }
+        // Además, incluir las transacciones actuales en memoria (por si acaso)
+        transactionsToShow = transactionsToShow.concat(dailyTransactions);
+    }
 
-                // 👇 Incluir descripción si existe
-                const descriptionHTML = transaction.description ? 
-                    `<div class="transaction-description">${transaction.description}</div>` : '';
+    // --- El resto igual, pero usa transactionsToShow ---
+    let filteredTransactions = [...transactionsToShow];
 
-                item.innerHTML = `
-                    <div>
-                        <strong>${isSale ? transaction.product : transaction.description}</strong>
-                        <div class="transaction-details">${transaction.date}</div>
-                        ${isSale ? 
-                            `<div>${transaction.quantity} ${predefinedProducts[transaction.product]?.tipo === "fijo" ? "unid" : "kg"} × S/ ${transaction.price.toFixed(2)}</div>` : 
-                            `<div class="category-badge">${transaction.category}</div>`
-                        }
-                        ${descriptionHTML}
-                        <span class="payment-badge ${paymentClass}">${transaction.paymentMethod}</span>
-                    </div>
-                    <div style="color: ${isSale ? 'var(--success)' : 'var(--danger)'}; text-align: right;">
-                        ${isSale ? '+' : '-'} S/ ${transaction.amount.toFixed(2)}
-                        ${actionsHTML}
+    // Filtro por tipo
+    if (typeFilter !== 'all') {
+        filteredTransactions = filteredTransactions.filter(t => t.type === typeFilter);
+    }
+
+    // Filtro por método de pago
+    if (paymentFilter !== 'all') {
+        filteredTransactions = filteredTransactions.filter(t => t.paymentMethod === paymentFilter);
+    }
+
+    // Ordenar por fecha (más reciente primero)
+    filteredTransactions.sort((a, b) => b.id - a.id);
+
+    // Calcular totales
+    let totalCash = 0;
+    let totalYape = 0;
+    let totalExpenses = 0;
+
+    filteredTransactions.forEach(t => {
+        if (t.type === 'sale') {
+            if (t.paymentMethod === 'efectivo') totalCash += t.amount;
+            if (t.paymentMethod === 'yape') totalYape += t.amount;
+        } else if (t.type === 'expense') {
+            totalExpenses += t.amount;
+        }
+    });
+
+    historyCashEl.textContent = `S/ ${totalCash.toFixed(2)}`;
+    historyYapeEl.textContent = `S/ ${totalYape.toFixed(2)}`;
+    historyExpensesEl.textContent = `S/ ${totalExpenses.toFixed(2)}`;
+
+    // Mostrar historial
+    historyListEl.innerHTML = '';
+
+    if (filteredTransactions.length === 0) {
+        historyListEl.innerHTML = '<p>No hay transacciones que coincidan con los filtros.</p>';
+    } else {
+        filteredTransactions.forEach(transaction => {
+            const item = document.createElement('div');
+            item.className = 'transaction-item fade-in';
+
+            const isSale = transaction.type === 'sale';
+            const paymentClass = `payment-${transaction.paymentMethod}`;
+
+            let actionsHTML = '';
+            if (currentUser && currentUser.role === 'admin') {
+                actionsHTML = `
+                    <div class="transaction-actions">
+                        <button class="transaction-action-btn edit" onclick="editTransaction(${JSON.stringify(transaction).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="transaction-action-btn delete" onclick="deleteTransaction(${JSON.stringify(transaction).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 `;
+            }
 
-                historyListEl.appendChild(item);
-            });
-        }
+            // 👇 Incluir descripción si existe
+            const descriptionHTML = transaction.description ? 
+                `<div class="transaction-description">${transaction.description}</div>` : '';
+
+            item.innerHTML = `
+                <div>
+                    <strong>${isSale ? transaction.product : transaction.description}</strong>
+                    <div class="transaction-details">${transaction.date}</div>
+                    ${isSale ? 
+                        `<div>${transaction.quantity} ${predefinedProducts[transaction.product]?.tipo === "fijo" ? "unid" : "kg"} × S/ ${transaction.price.toFixed(2)}</div>` : 
+                        `<div class="category-badge">${transaction.category}</div>`
+                    }
+                    ${descriptionHTML}
+                    <span class="payment-badge ${paymentClass}">${transaction.paymentMethod}</span>
+                </div>
+                <div style="color: ${isSale ? 'var(--success)' : 'var(--danger)'}; text-align: right;">
+                    ${isSale ? '+' : '-'} S/ ${transaction.amount.toFixed(2)}
+                    ${actionsHTML}
+                </div>
+            `;
+
+            historyListEl.appendChild(item);
+        });
     }
+}
     
     // Actualizar la cuadrícula de productos
     function updateProductGrid() {
@@ -3638,21 +4112,31 @@ function toggleTheme() {
 
     // Actualizar el resumen de ventas, gastos y balance
     function updateSummary() {
-        const totalSales = transactions
-            .filter(t => t.type === 'sale')
-            .reduce((sum, t) => sum + t.amount, 0);
-            
-        const totalExpenses = transactions
-            .filter(t => t.type === 'expense')
-            .reduce((sum, t) => sum + t.amount, 0);
-            
-        const balance = totalSales - totalExpenses;
+        const totalSales = dailyTransactions
+        .filter(t => t.type === 'sale')
+        .reduce((sum, t) => sum + t.amount, 0);
         
-        totalSalesEl.textContent = `S/ ${totalSales.toFixed(2)}`;
-        totalExpensesEl.textContent = `S/ ${totalExpenses.toFixed(2)}`;
-        balanceEl.textContent = `S/ ${balance.toFixed(2)}`;
-        balanceEl.style.color = balance >= 0 ? 'var(--success)' : 'var(--danger)';
+    const totalExpenses = dailyTransactions
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+        
+    const balance = totalSales - totalExpenses;
+    
+    totalSalesEl.textContent = `S/ ${totalSales.toFixed(2)}`;
+    totalExpensesEl.textContent = `S/ ${totalExpenses.toFixed(2)}`;
+    balanceEl.textContent = `S/ ${balance.toFixed(2)}`;
+    balanceEl.style.color = balance >= 0 ? 'var(--success)' : 'var(--danger)';
+}
+function loadTransactionsForDate(date) {
+    const archiveKey = `transactions_${date.replace(/\//g, '-')}`;
+    const archivedData = localStorage.getItem(archiveKey);
+    
+    if (archivedData) {
+        return JSON.parse(archivedData);
     }
+    
+    return [];
+}
     
     // Añadir nueva categoría
     async function addCategory() {
@@ -3689,6 +4173,7 @@ function toggleTheme() {
         
         newCategoryEl.value = '';
         showNotification('✅ Categoría agregada correctamente.', 'success');
+           await syncWithFirebase();
     }
     
     // Renderizar lista de categorías para gestión
@@ -3748,89 +4233,304 @@ categories.expense.forEach(category => {
     
     // Función para eliminar categoría con confirmación personalizada
     async function deleteCategory(type, category) {
-        // Verificar si el usuario tiene permisos
-        if (!currentUser || currentUser.role !== 'admin') {
-            showNotification('Solo el administrador puede eliminar categorías', 'error');
-            return;
-        }
-
-        // Verificar si hay transacciones usando esta categoría
-        const hasTransactions = transactions.some(t => 
-            (type === 'sale' && t.type === 'sale' && t.product === category) ||
-            (type === 'expense' && t.type === 'expense' && t.category === category)
-        );
-        
-        if (hasTransactions) {
-            showNotification('❌ No se puede eliminar: hay transacciones asociadas.', 'error');
-            return;
-        }
-        
-        const isConfirmed = await showCustomConfirm({
-            type: 'delete',
-            icon: 'trash-alt',
-            title: 'Eliminar Categoría',
-            message: `¿Está seguro de que desea eliminar la categoría "${category}"?`,
-            cancelText: 'Cancelar',
-            okText: 'Eliminar',
-            okColor: 'linear-gradient(135deg, var(--danger), #FF5253)'
-        });
-        
-        if (!isConfirmed) return;
-        
-        categories[type] = categories[type].filter(c => c !== category);
-        await syncWithFirebase();
-        updateCategories();
-        updateProductGrid();
-        renderCategoriesList();
-        
-        showNotification('✅ Categoría eliminada correctamente.', 'success');
+    // Verificar si el usuario tiene permisos
+    if (!currentUser || currentUser.role !== 'admin') {
+        showNotification('Solo el administrador puede eliminar categorías', 'error');
+        return;
     }
+
+    // Verificar si hay transacciones usando esta categoría
+    const hasTransactions = transactions.some(t => 
+        (type === 'sale' && t.type === 'sale' && t.product === category) ||
+        (type === 'expense' && t.type === 'expense' && t.category === category)
+    );
+    
+    if (hasTransactions) {
+        showNotification('❌ No se puede eliminar: hay transacciones asociadas.', 'error');
+        return;
+    }
+
+    const isConfirmed = await showCustomConfirm({
+        type: 'delete',
+        icon: 'trash-alt',
+        title: 'Eliminar Categoría',
+        message: `¿Está seguro de que desea eliminar la categoría "${category}"?`,
+        cancelText: 'Cancelar',
+        okText: 'Eliminar',
+        okColor: 'linear-gradient(135deg, var(--danger), #FF5253)'
+    });
+    
+    if (!isConfirmed) return;
+    
+    categories[type] = categories[type].filter(c => c !== category);
+    await syncWithFirebase();
+    updateCategories();
+    updateProductGrid();
+    renderCategoriesList();
+    
+    showNotification('✅ Categoría eliminada correctamente.', 'success');
+}
     
     // Reiniciar todos los datos
     async function resetData() {
-        // Verificar si el usuario tiene permisos
-        if (!currentUser || currentUser.role !== 'admin') {
-            showNotification('Solo el administrador puede reiniciar los datos', 'error');
-            return;
-        }
-        
-        const isConfirmed = await showCustomConfirm({
-            type: 'reset',
-            icon: 'exclamation-triangle',
-            title: 'Reiniciar Todos los Datos',
-            message: "¿Está seguro de que desea reiniciar todos los datos?\n\nEsta acción no se puede deshacer.\nSe perderán todas las transacciones, categorías e información de caja.",
-            cancelText: 'Cancelar',
-            okText: 'Reiniciar Todo',
-            okColor: 'linear-gradient(135deg, var(--warning), #FFC107)'
-        });
-        
-        if (!isConfirmed) return;
-        
-        transactions = [];
-        categories = {
-            sale: ["Carne de Chancho", "Chuleta", "Otros Cortes", "Bolsa"],
-            expense: ["Almuerzo", "Transporte", "Compras", "Alquiler", "Facturas", "Otros gastos"]
-        };
-        
-        cashData = {
-            cash: 0,
-            change: 0,
-            movements: []
-        };
-        
-        await syncWithFirebase();
-        updateTransactionLists();
-        updateSummary();
-        updateCategories();
-        updateProductGrid();
-        renderCategoriesList();
-        updateCashDisplay();
-        updateHistory();
-        
-        showNotification('✅ Datos reiniciados correctamente.', 'success');
+    // Verificar si el usuario tiene permisos
+    if (!currentUser || currentUser.role !== 'admin') {
+        showNotification('Solo el administrador puede reiniciar los datos', 'error');
+        return;
     }
+
+    const isConfirmed = await showCustomConfirm({
+        type: 'reset',
+        icon: 'exclamation-triangle',
+        title: 'Reiniciar Todos los Datos',
+        message: "¿Está seguro de que desea reiniciar todos los datos?\n\nEsta acción no se puede deshacer.\nSe perderán todas las transacciones, categorías e información de caja.",
+        cancelText: 'Cancelar',
+        okText: 'Reiniciar Todo',
+        okColor: 'linear-gradient(135deg, var(--warning), #FFC107)'
+    });
+
+    if (!isConfirmed) return;
+
+    // Archivar transacciones del día antes de borrar todo
+    archiveDailyTransactions();
+
+    transactions = [];
+    dailyTransactions = [];
+  
+
+    cashData = {
+        cash: 0,
+        change: 0,
+        movements: []
+    };
+
+    await syncWithFirebase();
+    updateTransactionLists();
+    updateSummary();
+    updateCategories();
+    updateProductGrid();
+    renderCategoriesList();
+    updateCashDisplay();
+    updateHistory();
+
+    showNotification('✅ Datos reiniciados correctamente.', 'success');
+}
+
     
     document.addEventListener('DOMContentLoaded', init);
-</script>
+    init
+function checkDayChange() {
+    const today = new Date().toLocaleDateString();
+    if (today !== currentDay) {
+        const previousDay = currentDay; // Guarda el día anterior antes de actualizar
+        archiveDailyTransactions().then(() => {
+            // Elimina las transacciones del día anterior del array principal
+            transactions = transactions.filter(t => {
+                const [d, m, y] = t.date.split(' ')[0].split('/');
+                const dateStr = `${Number(d)}/${Number(m)}/${Number(y)}`;
+                return dateStr !== previousDay;
+            });
+
+            // Limpia historial y arrays
+            dailyTransactions = [];
+            updateTransactionLists();
+            updateSummary();
+            updateHistory();
+            currentDay = today;
+            showNotification(`Se archivaron las transacciones del día anterior (${previousDay}) y se limpió el historial.`, 'success');
+        });
+    }
+}
+
+
+function generateDayReportPDF(day, transactions) {
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text(`REPORTE COMPLETO - Anyela`, 105, 20, { align: "center" });
+    doc.setFontSize(12);
+    doc.text(`Generado el: ${day} a las ${new Date().toLocaleTimeString()}`, 105, 30, { align: "center" });
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, 35, 190, 35);
+
+    // Resumen general
+    const sales = transactions.filter(t => t.type === 'sale');
+    const expenses = transactions.filter(t => t.type === 'expense');
+    const totalSales = sales.reduce((sum, t) => sum + t.amount, 0);
+    const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+    const balance = totalSales - totalExpenses;
+
+    doc.setFontSize(16);
+    doc.text("RESUMEN GENERAL", 20, 45);
+    doc.setFontSize(12);
+    doc.text(`Total de ventas: S/ ${totalSales.toFixed(2)}`, 20, 55);
+    doc.text(`Total de gastos: S/ ${totalExpenses.toFixed(2)}`, 20, 62);
+    doc.setTextColor(balance >= 0 ? 16 : 238, balance >= 0 ? 172 : 82, balance >= 0 ? 132 : 83);
+    doc.text(`Balance: S/ ${balance.toFixed(2)}`, 20, 69);
+    doc.setTextColor(80, 80, 80);
+
+    // Producto más vendido
+    const productStats = {};
+    sales.forEach(sale => {
+        if (!productStats[sale.product]) productStats[sale.product] = { quantity: 0, amount: 0 };
+        productStats[sale.product].quantity += sale.quantity;
+        productStats[sale.product].amount += sale.amount;
+    });
+    let topProduct = '', topQuantity = 0, topAmount = 0;
+    Object.entries(productStats).forEach(([product, data]) => {
+        if (data.quantity > topQuantity) {
+            topProduct = product;
+            topQuantity = data.quantity;
+            topAmount = data.amount;
+        }
+    });
+    doc.text("Producto más vendido:", 20, 79);
+    doc.text(`${topProduct} - ${topQuantity} ${predefinedProducts[topProduct]?.tipo === "fijo" ? "unidades" : "kg"}`, 25, 86);
+    doc.text(`Generó: S/ ${topAmount.toFixed(2)}`, 25, 93);
+
+    // Ventas por método de pago
+    const salesByPayment = { efectivo: 0, yape: 0, transferencia: 0, caja: 0 };
+    sales.forEach(sale => { salesByPayment[sale.paymentMethod] += sale.amount; });
+    let yPos = 103;
+    doc.text("Ventas por método de pago:", 20, yPos);
+    yPos += 7;
+    Object.keys(salesByPayment).forEach(method => {
+        if (salesByPayment[method] > 0) {
+            doc.text(`${method.charAt(0).toUpperCase() + method.slice(1)}: S/ ${salesByPayment[method].toFixed(2)}`, 25, yPos);
+            yPos += 7;
+        }
+    });
+
+    // Gastos por categoría
+    yPos += 10;
+    doc.text("Gastos por categoría:", 20, yPos);
+    yPos += 7;
+    const expensesByCategory = {};
+    expenses.forEach(expense => {
+        if (!expensesByCategory[expense.category]) expensesByCategory[expense.category] = 0;
+        expensesByCategory[expense.category] += expense.amount;
+    });
+    Object.keys(expensesByCategory).forEach(category => {
+        if (expensesByCategory[category] > 0) {
+            doc.text(`${category}: S/ ${expensesByCategory[category].toFixed(2)}`, 25, yPos);
+            yPos += 7;
+        }
+    });
+
+    // Detalle de transacciones
+    yPos += 10;
+    if (yPos > 240) { doc.addPage(); yPos = 20; }
+    doc.setFontSize(16);
+    doc.setTextColor(50, 50, 50);
+    doc.text("DETALLE DE TRANSACCIONES", 20, yPos);
+    yPos += 10;
+
+    // Tabla de transacciones (con Estado y Descripción)
+    const transactionsTable = transactions.map(t => {
+        if (t.type === 'sale') {
+            return [
+                "", // Estado: círculo
+                t.date.split(' ')[0], // Fecha
+                t.product,            // Tipo (producto)
+                t.description || "",  // Descripción
+                t.quantity + (predefinedProducts[t.product]?.tipo === "fijo" ? " unid" : " kg"),
+                `S/ ${t.amount.toFixed(2)}`,
+                t.paymentMethod,
+                t.user || 'N/A'
+            ];
+        } else {
+            return [
+                "", // Estado: círculo
+                t.date.split(' ')[0],
+                t.category,
+                t.description || "",
+                "",
+                `S/ ${t.amount.toFixed(2)}`,
+                t.paymentMethod,
+                t.user || 'N/A'
+            ];
+        }
+    });
+
+    doc.autoTable({
+        startY: yPos,
+        head: [['Estado', 'Fecha', 'Tipo', 'Descripción', 'Kg', 'Monto', 'Pago', 'Usuario']],
+        body: transactionsTable,
+        theme: 'grid',
+        headStyles: {
+            fillColor: [80, 80, 80],
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+            fillColor: [240, 240, 240]
+        },
+        didDrawCell: function(data) {
+            // Dibuja el círculo en la columna "Estado" (índice 0)
+            if (data.section === 'body' && data.column.index === 0) {
+                const rowIndex = data.row.index;
+                const tipo = transactions[rowIndex].type;
+                if (tipo === 'sale') {
+                    doc.setFillColor(16, 172, 132); // Verde para venta
+                } else if (tipo === 'expense') {
+                    doc.setFillColor(238, 82, 83); // Rojo para gasto
+                }
+                doc.circle(
+                    data.cell.x + data.cell.width / 2,
+                    data.cell.y + data.cell.height / 2,
+                    3,
+                    'F'
+                );
+            }
+        }
+    });
+
+    doc.save(`Reporte_Completo_${day.replace(/\//g, '-')}.pdf`);
+    showNotification('✅ Reporte PDF generado correctamente', 'success');
+}
+
+
+
+async function archiveDailyTransactions() {
+    if (dailyTransactions.length > 0) {
+        const dailyCopy = [...dailyTransactions];
+        console.log("Archivar transacciones:", dailyCopy);
+
+        // Guardar en localStorage
+        const archiveKey = `transactions_${currentDay.replace(/\//g, '-')}`;
+        localStorage.setItem(archiveKey, JSON.stringify(dailyCopy));
+        
+        // Guardar en Firebase
+        try {
+            await db.collection('archivedDays').doc(currentDay.replace(/\//g, '-')).set({
+                transactions: dailyCopy,
+                date: currentDay,
+                archivedAt: new Date().toISOString()
+            });
+            console.log("Archivado en Firebase:", currentDay);
+
+            // Eliminar transacciones del día en la colección "transactions"
+            const snapshot = await db.collection('transactions').get();
+            const batch = db.batch();
+            snapshot.forEach(doc => {
+                const t = doc.data();
+                if (t.date && t.date.split(' ')[0] === currentDay) {
+                    batch.delete(doc.ref);
+                }
+            });
+            await batch.commit();
+            console.log("Transacciones del día eliminadas de Firebase");
+
+        } catch (error) {
+            showNotification('Error al archivar el día en Firebase', 'error');
+            console.error("Error al archivar:", error);
+        }
+
+        dailyTransactions = [];
+        showNotification(`Se han archivado las transacciones del día ${currentDay}`, 'success');
+    } else {
+        console.log("No hay transacciones para archivar");
+    }
+}
+    </script>
 </body>
 </html>

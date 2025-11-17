@@ -1,1 +1,344 @@
-xx
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Almacén Anyela - Sistema Completo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="almacen-styles.css">
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="mobile-body">
+    <div class="almacen-container">
+        
+        <!-- HEADER PRINCIPAL -->
+        <header class="almacen-header">
+            <div class="header-top">
+                <div class="sede-selector">
+                    <select id="sede-select">
+                        <option value="anyela">Anyela</option>
+                        <option value="rebequita">Rebequita</option>
+                    </select>
+                </div>
+                <div class="header-center">
+                    <h1 class="app-title">
+                        <i class="fas fa-warehouse"></i>
+                        Almacén Carnes
+                    </h1>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" id="sync-btn" title="Sincronizar">
+                        <i class="fas fa-sync"></i>
+                    </button>
+                    <button class="header-btn" id="user-btn" title="Usuario">
+                        <i class="fas fa-user"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- INDICADORES RÁPIDOS -->
+            <div class="header-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-total-productos">0</div>
+                    <div class="stat-label">Productos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-stock-total">0 kg</div>
+                    <div class="stat-label">Stock Total</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-alertas">0</div>
+                    <div class="stat-label">Alertas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-valor">S/ 0</div>
+                    <div class="stat-label">Valor</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- NAVEGACIÓN PRINCIPAL -->
+        <nav class="main-nav">
+            <button class="nav-btn active" data-tab="dashboard">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </button>
+            <button class="nav-btn" data-tab="inventario">
+                <i class="fas fa-boxes"></i>
+                <span>Inventario</span>
+            </button>
+            <button class="nav-btn" data-tab="compras">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Compras</span>
+            </button>
+            <button class="nav-btn" data-tab="proveedores">
+                <i class="fas fa-truck"></i>
+                <span>Proveedores</span>
+            </button>
+            <button class="nav-btn" data-tab="scanner">
+                <i class="fas fa-camera"></i>
+                <span>Escanear</span>
+            </button>
+            <button class="nav-btn" data-tab="reportes">
+                <i class="fas fa-chart-bar"></i>
+                <span>Reportes</span>
+            </button>
+        </nav>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="main-content">
+            
+            <!-- DASHBOARD -->
+            <div class="tab-content active" id="dashboard-tab">
+                <div class="dashboard-grid">
+                    <!-- ALERTAS URGENTES -->
+                    <div class="dashboard-card alertas-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-exclamation-triangle"></i> Alertas Urgentes</h3>
+                            <span class="badge" id="contador-alertas">0</span>
+                        </div>
+                        <div class="alertas-list" id="alertas-list"></div>
+                    </div>
+
+                    <!-- MÉTRICAS PRINCIPALES -->
+                    <div class="dashboard-card metricas-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-pie"></i> Métricas</h3>
+                        </div>
+                        <div class="metricas-grid">
+                            <div class="metrica-item">
+                                <div class="metrica-valor" id="metrica-rotacion">0%</div>
+                                <div class="metrica-label">Rotación</div>
+                            </div>
+                            <div class="metrica-item">
+                                <div class="metrica-valor" id="metrica-mermas">0%</div>
+                                <div class="metrica-label">Mermas</div>
+                            </div>
+                            <div class="metrica-item">
+                                <div class="metrica-valor" id="metrica-cobertura">0 días</div>
+                                <div class="metrica-label">Cobertura</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GRÁFICO STOCK -->
+                    <div class="dashboard-card chart-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-bar"></i> Stock por Categoría</h3>
+                        </div>
+                        <canvas id="stock-chart" height="200"></canvas>
+                    </div>
+
+                    <!-- PRODUCTOS CRÍTICOS -->
+                    <div class="dashboard-card criticos-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-skull-crossbones"></i> Productos Críticos</h3>
+                        </div>
+                        <div class="criticos-list" id="criticos-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INVENTARIO -->
+            <div class="tab-content" id="inventario-tab">
+                <div class="section-header">
+                    <h2>Gestión de Inventario</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" id="nuevo-producto-btn">
+                            <i class="fas fa-plus"></i> Nuevo Producto
+                        </button>
+                        <button class="btn btn-secondary" id="nuevo-lote-btn">
+                            <i class="fas fa-pallet"></i> Nuevo Lote
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FILTROS RÁPIDOS -->
+                <div class="filtros-rapidos">
+                    <div class="filtro-group">
+                        <label>Categoría:</label>
+                        <select id="filtro-categoria">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="filtro-group">
+                        <label>Estado:</label>
+                        <select id="filtro-estado">
+                            <option value="">Todos</option>
+                            <option value="stock-bajo">Stock Bajo</option>
+                            <option value="stock-critico">Stock Crítico</option>
+                            <option value="sin-stock">Sin Stock</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-outline" id="aplicar-filtros">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                </div>
+
+                <!-- LISTA DE PRODUCTOS -->
+                <div class="productos-grid" id="lista-productos"></div>
+            </div>
+
+            <!-- COMPRAS -->
+            <div class="tab-content" id="compras-tab">
+                <div class="section-header">
+                    <h2>Gestión de Compras</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" id="nueva-orden-btn">
+                            <i class="fas fa-file-invoice"></i> Nueva Orden
+                        </button>
+                        <button class="btn btn-secondary" id="nueva-compra-btn">
+                            <i class="fas fa-cart-plus"></i> Registrar Compra
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PESTAÑAS COMPRAS -->
+                <div class="sub-nav">
+                    <button class="sub-nav-btn active" data-subtab="ordenes">Órdenes de Compra</button>
+                    <button class="sub-nav-btn" data-subtab="compras">Historial Compras</button>
+                    <button class="sub-nav-btn" data-subtab="pendientes">Pendientes</button>
+                </div>
+
+                <div class="sub-content active" id="ordenes-subtab">
+                    <div id="lista-ordenes"></div>
+                </div>
+            </div>
+
+            <!-- PROVEEDORES -->
+            <div class="tab-content" id="proveedores-tab">
+                <div class="section-header">
+                    <h2>Gestión de Proveedores</h2>
+                    <button class="btn btn-primary" id="nuevo-proveedor-btn">
+                        <i class="fas fa-plus"></i> Nuevo Proveedor
+                    </button>
+                </div>
+                <div id="lista-proveedores"></div>
+            </div>
+
+            <!-- SCANNER -->
+            <div class="tab-content" id="scanner-tab">
+                <div class="scanner-container">
+                    <div class="scanner-view" id="scanner-view">
+                        <div class="scanner-frame">
+                            <i class="fas fa-camera"></i>
+                            <p>Enfocar código de barras en el área</p>
+                            <div class="scan-area"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="scanner-controls">
+                        <button class="btn btn-primary" id="start-scanner">
+                            <i class="fas fa-play"></i> Iniciar Scanner
+                        </button>
+                        <button class="btn btn-secondary" id="toggle-flash">
+                            <i class="fas fa-bolt"></i> Flash
+                        </button>
+                    </div>
+
+                    <div class="manual-input">
+                        <input type="text" id="manual-barcode" placeholder="Ingresar código manualmente">
+                        <button class="btn btn-primary" id="search-barcode">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                    </div>
+
+                    <div class="scan-results" id="scan-results"></div>
+                </div>
+            </div>
+
+            <!-- REPORTES -->
+            <div class="tab-content" id="reportes-tab">
+                <div class="section-header">
+                    <h2>Reportes y Análisis</h2>
+                </div>
+
+                <div class="reportes-grid">
+                    <div class="reporte-card" data-reporte="stock">
+                        <i class="fas fa-boxes"></i>
+                        <h4>Reporte de Stock</h4>
+                        <p>Análisis completo de inventario</p>
+                    </div>
+                    <div class="reporte-card" data-reporte="compras">
+                        <i class="fas fa-shopping-cart"></i>
+                        <h4>Compras vs Ventas</h4>
+                        <p>Comparativa y tendencias</p>
+                    </div>
+                    <div class="reporte-card" data-reporte="mermas">
+                        <i class="fas fa-chart-line"></i>
+                        <h4>Análisis de Mermas</h4>
+                        <p>Pérdidas y optimización</p>
+                    </div>
+                    <div class="reporte-card" data-reporte="proveedores">
+                        <i class="fas fa-truck"></i>
+                        <h4>Evaluación Proveedores</h4>
+                        <p>Calificación y rendimiento</p>
+                    </div>
+                    <div class="reporte-card" data-reporte="rotacion">
+                        <i class="fas fa-sync"></i>
+                        <h4>Rotación de Productos</h4>
+                        <p>Análisis ABC y tendencias</p>
+                    </div>
+                    <div class="reporte-card" data-reporte="valorizacion">
+                        <i class="fas fa-dollar-sign"></i>
+                        <h4>Valorización Inventario</h4>
+                        <p>Valor actual del stock</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODALES -->
+    <!-- Modal Nuevo Producto -->
+    <div class="modal" id="modal-producto">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nuevo Producto</h3>
+                <button class="close-btn" id="close-producto-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulario de producto -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Orden Compra -->
+    <div class="modal" id="modal-orden-compra">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nueva Orden de Compra</h3>
+                <button class="close-btn" id="close-orden-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulario orden compra -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Proveedor -->
+    <div class="modal" id="modal-proveedor">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nuevo Proveedor</h3>
+                <button class="close-btn" id="close-proveedor-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulario proveedor -->
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICACIONES -->
+    <div class="notification-container" id="notification-container"></div>
+
+    <script src="almacen-completo.js"></script>
+</body>
+</html>

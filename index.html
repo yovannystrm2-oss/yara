@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Almacén - Escáner Rápido</title>
+    <title>Sistema Almacén - Escáner Corregido</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
@@ -36,10 +36,11 @@
             text-align: center;
         }
 
+        /* CONTENEDOR DE CÁMARA CORREGIDO */
         .scanner-container {
             position: relative;
             width: 100%;
-            height: 250px; /* Más pequeño para mejor rendimiento */
+            height: 300px; /* Altura fija para mejor control */
             background: #000;
             border-radius: 10px;
             overflow: hidden;
@@ -47,18 +48,31 @@
         }
 
         #interactive {
-            width: 100%;
-            height: 100%;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important; /* Esto es clave para que ocupe todo el espacio */
         }
 
+        /* Overlay para guía de escaneo */
         .scan-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            border: 2px solid #e74c3c;
-            box-shadow: 0 0 0 1000px rgba(0,0,0,0.7);
+            pointer-events: none; /* Permite interactuar con la cámara */
+        }
+
+        .scan-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 150px;
+            border: 3px solid #e74c3c;
+            border-radius: 10px;
+            background: rgba(231, 76, 60, 0.1);
         }
 
         .scan-line {
@@ -82,21 +96,16 @@
             }
         }
 
-        .scanner-guide {
+        .scanner-instructions {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
             text-align: center;
-            z-index: 10;
-        }
-
-        .scanner-guide .box {
-            width: 250px;
-            height: 100px;
-            border: 2px solid #e74c3c;
-            margin-bottom: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            font-size: 14px;
         }
 
         .btn {
@@ -131,14 +140,14 @@
             font-weight: bold;
         }
 
-        .status.scanning {
-            background: #d4edda;
-            color: #155724;
-        }
-
         .status.ready {
             background: #cce7ff;
             color: #004085;
+        }
+
+        .status.scanning {
+            background: #d4edda;
+            color: #155724;
         }
 
         .status.error {
@@ -154,50 +163,36 @@
             border-left: 4px solid #3498db;
         }
 
-        .info-item {
-            margin-bottom: 8px;
-            padding: 5px;
-        }
-
-        .info-label {
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .info-value {
-            color: #e74c3c;
-        }
-
-        .performance-tips {
+        .camera-fix {
+            text-align: center;
+            padding: 10px;
             background: #fff3cd;
             color: #856404;
-            padding: 10px;
-            margin: 10px 0;
             border-radius: 5px;
-            font-size: 0.9em;
+            margin: 10px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 ESCÁNER RÁPIDO - La Buena Familia</h1>
-            <p>Optimizado para máxima velocidad</p>
+            <h1>📷 ESCÁNER CORREGIDO - La Buena Familia</h1>
+            <p>Cámara completa sin bordes negros</p>
         </div>
 
-        <div class="performance-tips">
-            💡 <strong>Consejos para escaneo rápido:</strong><br>
-            • Buena iluminación • Enfocar bien • Código limpio • Acercar suficiente
+        <div class="camera-fix">
+            🔧 <strong>Problema solucionado:</strong> La cámara ahora ocupa todo el espacio
         </div>
 
+        <!-- CONTENEDOR DE CÁMARA MEJORADO -->
         <div class="scanner-container">
             <div id="interactive"></div>
             <div class="scan-overlay">
+                <div class="scan-guide"></div>
                 <div class="scan-line"></div>
-            </div>
-            <div class="scanner-guide">
-                <div class="box"></div>
-                <p>Coloca el código aquí</p>
+                <div class="scanner-instructions">
+                    📍 Enfoca el código de barras dentro del marco rojo
+                </div>
             </div>
         </div>
 
@@ -206,14 +201,14 @@
         </div>
 
         <div style="text-align: center; margin: 15px 0;">
-            <button class="btn btn-success" onclick="initFastScanner()">
-                ⚡ INICIAR ESCÁNER RÁPIDO
+            <button class="btn btn-success" onclick="initScanner()">
+                📷 INICIAR CÁMARA
             </button>
             <button class="btn btn-danger" onclick="stopScanner()">
-                ⏹️ DETENER
+                ⏹️ DETENER CÁMARA
             </button>
-            <button class="btn" onclick="testScanner()">
-                🧪 PROBAR CON CÓDIGO DE EJEMPLO
+            <button class="btn" onclick="switchCamera()">
+                🔄 CAMBIAR CÁMARA
             </button>
         </div>
 
@@ -231,123 +226,131 @@
                 <span class="info-label">Peso:</span>
                 <span class="info-value" id="scanWeight">-</span>
             </div>
-            <div class="info-item">
-                <span class="info-label">Precio Compra:</span>
+            <div class="info-label">Precio Compra:</span>
                 <span class="info-value" id="scanPrice">-</span>
             </div>
         </div>
 
-        <!-- SECCIÓN PARA CREAR CÓDIGOS DE PRUEBA -->
+        <!-- SECCIÓN DE AJUSTES -->
         <div class="product-info">
-            <h3>🎯 CREAR CÓDIGOS DE PRUEBA</h3>
-            <button class="btn" onclick="createTestProducts()">
-                GENERAR PRODUCTOS DE PRUEBA
+            <h3>⚙️ AJUSTES DE CÁMARA</h3>
+            <div style="margin: 10px 0;">
+                <label>Resolución: </label>
+                <select id="resolutionSelect" onchange="changeResolution()">
+                    <option value="hd">Alta (1280x720)</option>
+                    <option value="medium" selected>Media (640x480)</option>
+                    <option value="low">Baja (320x240)</option>
+                </select>
+            </div>
+            <button class="btn" onclick="testFullscreen()">
+                🖥️ MODO PANTALLA COMPLETA
             </button>
-            <div id="testBarcodes" style="margin-top: 15px;"></div>
         </div>
     </div>
 
     <script>
         let scannerActive = false;
-        let lastScannedCode = '';
-        let scanTimeout;
+        let currentFacingMode = 'environment';
+        let currentResolution = 'medium';
 
-        // CONFIGURACIÓN SUPER OPTIMIZADA
-        const scannerConfig = {
-            inputStream: {
-                name: "Live",
-                type: "LiveStream",
-                target: document.querySelector('#interactive'),
-                constraints: {
-                    width: 320,    // Resolución más baja = más rápido
-                    height: 240,   // Resolución más baja = más rápido
-                    facingMode: "environment",
-                    aspectRatio: { min: 1, max: 2 }
-                }
-            },
-            decoder: {
-                readers: [
-                    "code_128_reader",  // Solo Code128 para mayor velocidad
-                ],
-                multiple: false,        // No buscar múltiples códigos
-            },
-            locator: {
-                patchSize: "medium",    // Balance entre velocidad y precisión
-                halfSample: false       // Más velocidad
-            },
-            frequency: 10,              // Frames por segundo (reducido para velocidad)
-            numOfWorkers: 1,            // Solo un worker para móviles
+        // CONFIGURACIONES DE RESOLUCIÓN
+        const resolutionConfigs = {
+            'hd': { width: 1280, height: 720 },
+            'medium': { width: 640, height: 480 },
+            'low': { width: 320, height: 240 }
         };
 
-        function initFastScanner() {
+        function getScannerConfig() {
+            const resolution = resolutionConfigs[currentResolution];
+            
+            return {
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#interactive'),
+                    constraints: {
+                        width: resolution.width,
+                        height: resolution.height,
+                        facingMode: currentFacingMode,
+                        aspectRatio: { min: 1, max: 2 }
+                    }
+                },
+                decoder: {
+                    readers: ["code_128_reader"]
+                },
+                locator: {
+                    patchSize: "medium",
+                    halfSample: false
+                },
+                frequency: 10,
+                numOfWorkers: 1,
+            };
+        }
+
+        function initScanner() {
             if (scannerActive) return;
 
             const status = document.getElementById('scanStatus');
             status.className = 'status scanning';
-            status.innerHTML = '🔄 INICIANDO ESCÁNER...';
+            status.innerHTML = '🔄 INICIANDO CÁMARA...';
 
-            // Configuración ultra rápida
-            const fastConfig = {
-                ...scannerConfig,
-                frequency: 15,  // Un poco más de FPS pero estable
-                locator: {
-                    patchSize: "large",  // Más rápido en códigos grandes
-                    halfSample: false
-                }
-            };
+            // Limpiar contenedor primero
+            const interactive = document.getElementById('interactive');
+            interactive.innerHTML = '';
 
-            Quagga.init(fastConfig, function(err) {
+            Quagga.init(getScannerConfig(), function(err) {
                 if (err) {
                     status.className = 'status error';
                     status.innerHTML = '❌ ERROR: ' + err.message;
+                    
+                    // Mostrar errores comunes y soluciones
+                    if (err.name === 'NotAllowedError') {
+                        status.innerHTML += '<br>💡 Permiso denegado. Permite el acceso a la cámara.';
+                    } else if (err.name === 'NotFoundError') {
+                        status.innerHTML += '<br>💡 Cámara no encontrada.';
+                    } else if (err.name === 'NotSupportedError') {
+                        status.innerHTML += '<br>💡 Navegador no compatible.';
+                    }
                     return;
                 }
                 
                 Quagga.start();
                 scannerActive = true;
                 status.className = 'status scanning';
-                status.innerHTML = '🎯 ESCANEANDO - Enfoca el código de barras';
+                status.innerHTML = '🎯 CÁMARA ACTIVA - Escaneando...';
                 
-                // Limpiar resultado anterior
-                document.getElementById('scanResult').style.display = 'none';
-                lastScannedCode = '';
+                // Ajustar el video para que ocupe todo el espacio
+                setTimeout(() => {
+                    const videoElement = interactive.querySelector('video');
+                    if (videoElement) {
+                        videoElement.style.width = '100%';
+                        videoElement.style.height = '100%';
+                        videoElement.style.objectFit = 'cover';
+                    }
+                }, 1000);
             });
 
-            // DETECCIÓN OPTIMIZADA - con anti-rebote
             Quagga.onDetected(function(result) {
                 if (!scannerActive) return;
                 
                 const code = result.codeResult.code;
-                
-                // Evitar escaneos duplicados rápidos
-                if (code === lastScannedCode) return;
-                
-                lastScannedCode = code;
-                
-                // Feedback inmediato
                 const status = document.getElementById('scanStatus');
                 status.className = 'status ready';
-                status.innerHTML = '✅ CÓDIGO DETECTADO - Procesando...';
+                status.innerHTML = '✅ CÓDIGO DETECTADO: ' + code;
                 
-                // Vibración rápida
                 if (navigator.vibrate) navigator.vibrate(100);
-                
-                // Buscar producto inmediatamente
                 searchProduct(code);
-                
-                // Pequeña pausa antes de permitir nuevo escaneo
-                clearTimeout(scanTimeout);
-                scanTimeout = setTimeout(() => {
-                    lastScannedCode = '';
-                    status.className = 'status scanning';
-                    status.innerHTML = '🎯 LISTO - Escanea otro código';
-                }, 1500);
             });
 
-            // Manejar errores de cámara
             Quagga.onProcessed(function(result) {
                 if (!result) {
-                    document.getElementById('scanStatus').innerHTML = '🔍 BUSCANDO CÓDIGOS...';
+                    // Asegurar que el video ocupe todo el espacio
+                    const videoElement = document.querySelector('#interactive video');
+                    if (videoElement) {
+                        videoElement.style.width = '100%';
+                        videoElement.style.height = '100%';
+                        videoElement.style.objectFit = 'cover';
+                    }
                 }
             });
         }
@@ -356,11 +359,55 @@
             if (scannerActive) {
                 Quagga.stop();
                 scannerActive = false;
-                clearTimeout(scanTimeout);
                 
                 const status = document.getElementById('scanStatus');
                 status.className = 'status ready';
-                status.innerHTML = '⏸️ ESCÁNER DETENIDO - Presiona INICIAR';
+                status.innerHTML = '⏸️ CÁMARA DETENIDA - Presiona INICIAR';
+                
+                // Limpiar el contenedor
+                document.getElementById('interactive').innerHTML = '';
+            }
+        }
+
+        function switchCamera() {
+            if (scannerActive) {
+                stopScanner();
+                currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+                setTimeout(initScanner, 500);
+            } else {
+                currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+                const status = document.getElementById('scanStatus');
+                status.innerHTML = `🔄 Cámara cambiada a: ${currentFacingMode === 'environment' ? 'Trasera' : 'Frontal'}`;
+            }
+        }
+
+        function changeResolution() {
+            currentResolution = document.getElementById('resolutionSelect').value;
+            if (scannerActive) {
+                stopScanner();
+                setTimeout(initScanner, 500);
+            }
+        }
+
+        function testFullscreen() {
+            const scannerContainer = document.querySelector('.scanner-container');
+            
+            if (!document.fullscreenElement) {
+                if (scannerContainer.requestFullscreen) {
+                    scannerContainer.requestFullscreen();
+                } else if (scannerContainer.webkitRequestFullscreen) {
+                    scannerContainer.webkitRequestFullscreen();
+                } else if (scannerContainer.msRequestFullscreen) {
+                    scannerContainer.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
             }
         }
 
@@ -369,7 +416,6 @@
             const product = inventory.find(item => item.code === code);
 
             const resultDiv = document.getElementById('scanResult');
-            const status = document.getElementById('scanStatus');
             
             if (product) {
                 document.getElementById('scanCode').textContent = product.code;
@@ -378,12 +424,9 @@
                 document.getElementById('scanPrice').textContent = 'S/. ' + product.pricePerKilo + '/kg';
                 
                 resultDiv.style.display = 'block';
-                status.className = 'status success';
-                status.innerHTML = '✅ PRODUCTO ENCONTRADO - ' + getProductName(product.type);
-                
-                // Scroll automático al resultado
                 resultDiv.scrollIntoView({ behavior: 'smooth' });
             } else {
+                const status = document.getElementById('scanStatus');
                 status.className = 'status error';
                 status.innerHTML = '❌ PRODUCTO NO ENCONTRADO - Código: ' + code;
                 resultDiv.style.display = 'none';
@@ -402,85 +445,10 @@
             return names[type] || 'Producto de Chancho';
         }
 
-        // FUNCIÓN DE PRUEBA RÁPIDA
-        function testScanner() {
-            const testCodes = ['CHA-LOMO-123', 'CHA-COST-456', 'CHA-PIER-789'];
-            const randomCode = testCodes[Math.floor(Math.random() * testCodes.length)];
-            
-            const status = document.getElementById('scanStatus');
-            status.className = 'status ready';
-            status.innerHTML = '🧪 PROBANDO CON: ' + randomCode;
-            
-            searchProduct(randomCode);
-        }
-
-        // CREAR PRODUCTOS DE PRUEBA
-        function createTestProducts() {
-            const testProducts = [
-                { type: 'CHA-LOMO', weight: 5.5, price: 15.50 },
-                { type: 'CHA-COST', weight: 3.2, price: 12.80 },
-                { type: 'CHA-PIER', weight: 7.1, price: 14.20 }
-            ];
-
-            let inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
-            const testBarcodesDiv = document.getElementById('testBarcodes');
-            testBarcodesDiv.innerHTML = '<h4>Códigos de Prueba Creados:</h4>';
-
-            testProducts.forEach((product, index) => {
-                const code = `${product.type}-TEST-${Date.now()}-${index}`;
-                
-                const productData = {
-                    code: code,
-                    type: product.type,
-                    weight: product.weight,
-                    pricePerKilo: product.price,
-                    purchaseDate: new Date().toISOString().split('T')[0],
-                    expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    totalValue: (product.weight * product.price).toFixed(2),
-                    createdAt: new Date().toISOString()
-                };
-
-                inventory.push(productData);
-
-                // Mostrar código de barras de prueba
-                const barcodeDiv = document.createElement('div');
-                barcodeDiv.style.margin = '10px 0';
-                barcodeDiv.style.padding = '10px';
-                barcodeDiv.style.border = '1px solid #ddd';
-                barcodeDiv.style.borderRadius = '5px';
-                
-                barcodeDiv.innerHTML = `
-                    <strong>${getProductName(product.type)}</strong><br>
-                    <small>Código: ${code}</small><br>
-                    <svg id="barcode-${index}"></svg>
-                `;
-                
-                testBarcodesDiv.appendChild(barcodeDiv);
-                
-                // Generar código de barras visual
-                JsBarcode(`#barcode-${index}`, code, {
-                    format: "CODE128",
-                    width: 2,
-                    height: 40,
-                    displayValue: true
-                });
-            });
-
-            localStorage.setItem('carniceriaInventory', JSON.stringify(inventory));
-            
-            const status = document.getElementById('scanStatus');
-            status.className = 'status success';
-            status.innerHTML = '✅ PRODUCTOS DE PRUEBA CREADOS - Ya puedes escanearlos!';
-        }
-
-        // Detener escáner al salir
-        window.addEventListener('beforeunload', stopScanner);
-
-        // Cargar algunos productos de prueba automáticamente si no hay inventario
+        // Cargar productos de prueba si no existen
         window.addEventListener('load', function() {
             const inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
             if (inventory.length === 0) {
-                // Crear un producto de prueba por defecto
                 const defaultProduct = {
                     code: 'CHA-LOMO-DEMO-001',
                     type: 'CHA-LOMO',
@@ -494,6 +462,9 @@
                 localStorage.setItem('carniceriaInventory', JSON.stringify([defaultProduct]));
             }
         });
+
+        // Detener cámara al salir
+        window.addEventListener('beforeunload', stopScanner);
     </script>
 </body>
 </html>

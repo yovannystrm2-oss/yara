@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Almacén Carnicería - La Buena Familia</title>
+    <title>Sistema Almacén - Escáner Rápido</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
@@ -36,60 +36,67 @@
             text-align: center;
         }
 
-        .header h1 {
-            font-size: 1.4em;
-            margin-bottom: 5px;
-        }
-
-        .tabs {
-            display: flex;
-            background: #34495e;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 15px;
-            text-align: center;
-            color: white;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .tab.active {
-            background: #e74c3c;
-        }
-
-        .tab-content {
-            display: none;
-            padding: 20px;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        input, select {
+        .scanner-container {
+            position: relative;
             width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
+            height: 250px; /* Más pequeño para mejor rendimiento */
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
         }
 
-        input:focus, select:focus {
-            border-color: #3498db;
-            outline: none;
+        #interactive {
+            width: 100%;
+            height: 100%;
+        }
+
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #e74c3c;
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.7);
+        }
+
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: #e74c3c;
+            top: 50%;
+            animation: scan 1.5s infinite ease-in-out;
+            box-shadow: 0 0 10px #e74c3c;
+        }
+
+        @keyframes scan {
+            0%, 100% { 
+                top: 20%; 
+                opacity: 1;
+            }
+            50% { 
+                top: 80%; 
+                opacity: 0.7;
+            }
+        }
+
+        .scanner-guide {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .scanner-guide .box {
+            width: 250px;
+            height: 100px;
+            border: 2px solid #e74c3c;
+            margin-bottom: 10px;
         }
 
         .btn {
@@ -112,68 +119,44 @@
             background: #27ae60;
         }
 
-        .btn-success:hover {
-            background: #219a52;
-        }
-
         .btn-danger {
             background: #e74c3c;
         }
 
-        .btn-danger:hover {
-            background: #c0392b;
-        }
-
-        .barcode-container {
+        .status {
+            padding: 10px;
             text-align: center;
-            margin: 20px 0;
-            padding: 20px;
-            border: 2px dashed #ddd;
-            border-radius: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
         }
 
-        .scanner-container {
-            position: relative;
-            width: 100%;
-            height: 300px;
-            background: #000;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 20px 0;
+        .status.scanning {
+            background: #d4edda;
+            color: #155724;
         }
 
-        #interactive {
-            width: 100%;
-            height: 100%;
+        .status.ready {
+            background: #cce7ff;
+            color: #004085;
         }
 
-        .scan-line {
-            position: absolute;
-            width: 100%;
-            height: 3px;
-            background: #e74c3c;
-            top: 50%;
-            animation: scan 2s infinite linear;
-        }
-
-        @keyframes scan {
-            0%, 100% { top: 10%; }
-            50% { top: 90%; }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
         }
 
         .product-info {
             background: #f8f9fa;
-            padding: 20px;
+            padding: 15px;
             border-radius: 10px;
-            margin: 20px 0;
+            margin: 15px 0;
             border-left: 4px solid #3498db;
         }
 
         .info-item {
-            margin-bottom: 10px;
-            padding: 8px;
-            background: white;
-            border-radius: 5px;
+            margin-bottom: 8px;
+            padding: 5px;
         }
 
         .info-label {
@@ -185,257 +168,228 @@
             color: #e74c3c;
         }
 
-        .inventory-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .inventory-item {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: between;
-            align-items: center;
-        }
-
-        .inventory-item:hover {
-            background: #f8f9fa;
-        }
-
-        .item-info {
-            flex: 1;
-        }
-
-        .item-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .status {
+        .performance-tips {
+            background: #fff3cd;
+            color: #856404;
             padding: 10px;
-            text-align: center;
             margin: 10px 0;
             border-radius: 5px;
-        }
-
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🥩 CARNICERÍA LA BUENA FAMILIA</h1>
-            <p>Sistema de Gestión de Almacén</p>
+            <h1>🚀 ESCÁNER RÁPIDO - La Buena Familia</h1>
+            <p>Optimizado para máxima velocidad</p>
         </div>
 
-        <div class="tabs">
-            <div class="tab active" onclick="showTab('create')">📦 Crear Producto</div>
-            <div class="tab" onclick="showTab('scan')">📷 Escanear Producto</div>
-            <div class="tab" onclick="showTab('inventory')">📊 Inventario</div>
+        <div class="performance-tips">
+            💡 <strong>Consejos para escaneo rápido:</strong><br>
+            • Buena iluminación • Enfocar bien • Código limpio • Acercar suficiente
         </div>
 
-        <!-- PESTAÑA 1: CREAR PRODUCTO -->
-        <div id="create" class="tab-content active">
-            <h2>Crear Nuevo Producto de Chancho</h2>
-            
-            <div class="form-group">
-                <label for="productType">Tipo de Corte:</label>
-                <select id="productType">
-                    <option value="CHA-LOMO">Lomo de Chancho</option>
-                    <option value="CHA-COST">Costilla de Chancho</option>
-                    <option value="CHA-PIER">Pierna de Chancho</option>
-                    <option value="CHA-PANC">Panceta de Chancho</option>
-                    <option value="CHA-JAM">Jamón de Chancho</option>
-                    <option value="CHA-OTRO">Otro Corte</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="productWeight">Peso (Kilos):</label>
-                <input type="number" id="productWeight" step="0.01" placeholder="Ej: 5.75" min="0.1">
-            </div>
-
-            <div class="form-group">
-                <label for="purchasePrice">Precio de Compra (S/. por kilo):</label>
-                <input type="number" id="purchasePrice" step="0.01" placeholder="Ej: 12.50" min="0.1">
-            </div>
-
-            <div class="form-group">
-                <label for="purchaseDate">Fecha de Compra:</label>
-                <input type="date" id="purchaseDate">
-            </div>
-
-            <div class="form-group">
-                <label for="expiryDate">Fecha de Vencimiento:</label>
-                <input type="date" id="expiryDate">
-            </div>
-
-            <button class="btn btn-success" onclick="generateProduct()">🎯 Generar Código de Barras</button>
-
-            <div id="barcodeResult" class="barcode-container" style="display: none;">
-                <h3>✅ Producto Creado Exitosamente</h3>
-                <svg id="barcode"></svg>
-                <div id="productDetails"></div>
-                <button class="btn" onclick="printBarcode()">🖨️ Imprimir Código</button>
-            </div>
-        </div>
-
-        <!-- PESTAÑA 2: ESCANEAR PRODUCTO -->
-        <div id="scan" class="tab-content">
-            <h2>Escanear Producto</h2>
-            
-            <div class="scanner-container">
-                <div id="interactive"></div>
+        <div class="scanner-container">
+            <div id="interactive"></div>
+            <div class="scan-overlay">
                 <div class="scan-line"></div>
             </div>
-
-            <div class="status" id="scanStatus">
-                Presiona "Iniciar Escáner" para buscar productos
-            </div>
-
-            <div class="controls">
-                <button class="btn" onclick="initScanner()">📷 Iniciar Escáner</button>
-                <button class="btn btn-danger" onclick="stopScanner()">⏹️ Detener Escáner</button>
-            </div>
-
-            <div id="scanResult" class="product-info" style="display: none;">
-                <h3>📋 Información del Producto</h3>
-                <div class="info-item">
-                    <span class="info-label">Código:</span>
-                    <span class="info-value" id="scanCode">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Producto:</span>
-                    <span class="info-value" id="scanProduct">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Peso:</span>
-                    <span class="info-value" id="scanWeight">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Precio Compra:</span>
-                    <span class="info-value" id="scanPrice">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Fecha Compra:</span>
-                    <span class="info-value" id="scanDate">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Vencimiento:</span>
-                    <span class="info-value" id="scanExpiry">-</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Valor Total:</span>
-                    <span class="info-value" id="scanTotal">-</span>
-                </div>
+            <div class="scanner-guide">
+                <div class="box"></div>
+                <p>Coloca el código aquí</p>
             </div>
         </div>
 
-        <!-- PESTAÑA 3: INVENTARIO -->
-        <div id="inventory" class="tab-content">
-            <h2>Inventario de Productos</h2>
-            <button class="btn btn-danger" onclick="clearInventory()">🗑️ Limpiar Todo el Inventario</button>
-            
-            <div class="inventory-list" id="inventoryList">
-                <!-- Los productos se cargarán aquí -->
+        <div class="status ready" id="scanStatus">
+            🔵 Listo para escanear - Presiona INICIAR
+        </div>
+
+        <div style="text-align: center; margin: 15px 0;">
+            <button class="btn btn-success" onclick="initFastScanner()">
+                ⚡ INICIAR ESCÁNER RÁPIDO
+            </button>
+            <button class="btn btn-danger" onclick="stopScanner()">
+                ⏹️ DETENER
+            </button>
+            <button class="btn" onclick="testScanner()">
+                🧪 PROBAR CON CÓDIGO DE EJEMPLO
+            </button>
+        </div>
+
+        <div id="scanResult" class="product-info" style="display: none;">
+            <h3>📋 PRODUCTO ENCONTRADO</h3>
+            <div class="info-item">
+                <span class="info-label">Código:</span>
+                <span class="info-value" id="scanCode">-</span>
             </div>
+            <div class="info-item">
+                <span class="info-label">Producto:</span>
+                <span class="info-value" id="scanProduct">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Peso:</span>
+                <span class="info-value" id="scanWeight">-</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Precio Compra:</span>
+                <span class="info-value" id="scanPrice">-</span>
+            </div>
+        </div>
+
+        <!-- SECCIÓN PARA CREAR CÓDIGOS DE PRUEBA -->
+        <div class="product-info">
+            <h3>🎯 CREAR CÓDIGOS DE PRUEBA</h3>
+            <button class="btn" onclick="createTestProducts()">
+                GENERAR PRODUCTOS DE PRUEBA
+            </button>
+            <div id="testBarcodes" style="margin-top: 15px;"></div>
         </div>
     </div>
 
     <script>
-        // Inicializar fecha actual
-        document.getElementById('purchaseDate').valueAsDate = new Date();
-        
-        // Establecer vencimiento por defecto (7 días después)
-        let expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + 7);
-        document.getElementById('expiryDate').valueAsDate = expiryDate;
-
         let scannerActive = false;
+        let lastScannedCode = '';
+        let scanTimeout;
 
-        // Mostrar pestañas
-        function showTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
-            document.getElementById(tabName).classList.add('active');
-        }
+        // CONFIGURACIÓN SUPER OPTIMIZADA
+        const scannerConfig = {
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#interactive'),
+                constraints: {
+                    width: 320,    // Resolución más baja = más rápido
+                    height: 240,   // Resolución más baja = más rápido
+                    facingMode: "environment",
+                    aspectRatio: { min: 1, max: 2 }
+                }
+            },
+            decoder: {
+                readers: [
+                    "code_128_reader",  // Solo Code128 para mayor velocidad
+                ],
+                multiple: false,        // No buscar múltiples códigos
+            },
+            locator: {
+                patchSize: "medium",    // Balance entre velocidad y precisión
+                halfSample: false       // Más velocidad
+            },
+            frequency: 10,              // Frames por segundo (reducido para velocidad)
+            numOfWorkers: 1,            // Solo un worker para móviles
+        };
 
-        // Generar producto nuevo
-        function generateProduct() {
-            const type = document.getElementById('productType').value;
-            const weight = parseFloat(document.getElementById('productWeight').value);
-            const price = parseFloat(document.getElementById('purchasePrice').value);
-            const purchaseDate = document.getElementById('purchaseDate').value;
-            const expiryDate = document.getElementById('expiryDate').value;
+        function initFastScanner() {
+            if (scannerActive) return;
 
-            if (!weight || !price || !purchaseDate || !expiryDate) {
-                alert('❌ Por favor completa todos los campos');
-                return;
-            }
+            const status = document.getElementById('scanStatus');
+            status.className = 'status scanning';
+            status.innerHTML = '🔄 INICIANDO ESCÁNER...';
 
-            // Generar código único
-            const timestamp = new Date().getTime();
-            const random = Math.floor(Math.random() * 1000);
-            const productCode = `${type}-${timestamp}-${random}`;
-
-            // Crear objeto producto
-            const product = {
-                code: productCode,
-                type: type,
-                weight: weight,
-                pricePerKilo: price,
-                purchaseDate: purchaseDate,
-                expiryDate: expiryDate,
-                totalValue: (weight * price).toFixed(2),
-                createdAt: new Date().toISOString()
+            // Configuración ultra rápida
+            const fastConfig = {
+                ...scannerConfig,
+                frequency: 15,  // Un poco más de FPS pero estable
+                locator: {
+                    patchSize: "large",  // Más rápido en códigos grandes
+                    halfSample: false
+                }
             };
 
-            // Guardar en localStorage
-            saveProduct(product);
-
-            // Generar código de barras
-            JsBarcode("#barcode", productCode, {
-                format: "CODE128",
-                width: 2,
-                height: 80,
-                displayValue: true
+            Quagga.init(fastConfig, function(err) {
+                if (err) {
+                    status.className = 'status error';
+                    status.innerHTML = '❌ ERROR: ' + err.message;
+                    return;
+                }
+                
+                Quagga.start();
+                scannerActive = true;
+                status.className = 'status scanning';
+                status.innerHTML = '🎯 ESCANEANDO - Enfoca el código de barras';
+                
+                // Limpiar resultado anterior
+                document.getElementById('scanResult').style.display = 'none';
+                lastScannedCode = '';
             });
 
-            // Mostrar detalles
-            document.getElementById('productDetails').innerHTML = `
-                <p><strong>Código:</strong> ${productCode}</p>
-                <p><strong>Producto:</strong> ${getProductName(type)}</p>
-                <p><strong>Peso:</strong> ${weight} kg</p>
-                <p><strong>Precio Compra:</strong> S/. ${price}/kg</p>
-                <p><strong>Valor Total:</strong> S/. ${product.totalValue}</p>
-                <p><strong>Fecha Compra:</strong> ${purchaseDate}</p>
-                <p><strong>Vencimiento:</strong> ${expiryDate}</p>
-            `;
+            // DETECCIÓN OPTIMIZADA - con anti-rebote
+            Quagga.onDetected(function(result) {
+                if (!scannerActive) return;
+                
+                const code = result.codeResult.code;
+                
+                // Evitar escaneos duplicados rápidos
+                if (code === lastScannedCode) return;
+                
+                lastScannedCode = code;
+                
+                // Feedback inmediato
+                const status = document.getElementById('scanStatus');
+                status.className = 'status ready';
+                status.innerHTML = '✅ CÓDIGO DETECTADO - Procesando...';
+                
+                // Vibración rápida
+                if (navigator.vibrate) navigator.vibrate(100);
+                
+                // Buscar producto inmediatamente
+                searchProduct(code);
+                
+                // Pequeña pausa antes de permitir nuevo escaneo
+                clearTimeout(scanTimeout);
+                scanTimeout = setTimeout(() => {
+                    lastScannedCode = '';
+                    status.className = 'status scanning';
+                    status.innerHTML = '🎯 LISTO - Escanea otro código';
+                }, 1500);
+            });
 
-            document.getElementById('barcodeResult').style.display = 'block';
-
-            // Limpiar formulario
-            document.getElementById('productWeight').value = '';
-            document.getElementById('purchasePrice').value = '';
+            // Manejar errores de cámara
+            Quagga.onProcessed(function(result) {
+                if (!result) {
+                    document.getElementById('scanStatus').innerHTML = '🔍 BUSCANDO CÓDIGOS...';
+                }
+            });
         }
 
-        // Obtener nombre del producto
+        function stopScanner() {
+            if (scannerActive) {
+                Quagga.stop();
+                scannerActive = false;
+                clearTimeout(scanTimeout);
+                
+                const status = document.getElementById('scanStatus');
+                status.className = 'status ready';
+                status.innerHTML = '⏸️ ESCÁNER DETENIDO - Presiona INICIAR';
+            }
+        }
+
+        function searchProduct(code) {
+            const inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
+            const product = inventory.find(item => item.code === code);
+
+            const resultDiv = document.getElementById('scanResult');
+            const status = document.getElementById('scanStatus');
+            
+            if (product) {
+                document.getElementById('scanCode').textContent = product.code;
+                document.getElementById('scanProduct').textContent = getProductName(product.type);
+                document.getElementById('scanWeight').textContent = product.weight + ' kg';
+                document.getElementById('scanPrice').textContent = 'S/. ' + product.pricePerKilo + '/kg';
+                
+                resultDiv.style.display = 'block';
+                status.className = 'status success';
+                status.innerHTML = '✅ PRODUCTO ENCONTRADO - ' + getProductName(product.type);
+                
+                // Scroll automático al resultado
+                resultDiv.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                status.className = 'status error';
+                status.innerHTML = '❌ PRODUCTO NO ENCONTRADO - Código: ' + code;
+                resultDiv.style.display = 'none';
+            }
+        }
+
         function getProductName(type) {
             const names = {
                 'CHA-LOMO': 'Lomo de Chancho',
@@ -448,201 +402,97 @@
             return names[type] || 'Producto de Chancho';
         }
 
-        // Guardar producto en localStorage
-        function saveProduct(product) {
+        // FUNCIÓN DE PRUEBA RÁPIDA
+        function testScanner() {
+            const testCodes = ['CHA-LOMO-123', 'CHA-COST-456', 'CHA-PIER-789'];
+            const randomCode = testCodes[Math.floor(Math.random() * testCodes.length)];
+            
+            const status = document.getElementById('scanStatus');
+            status.className = 'status ready';
+            status.innerHTML = '🧪 PROBANDO CON: ' + randomCode;
+            
+            searchProduct(randomCode);
+        }
+
+        // CREAR PRODUCTOS DE PRUEBA
+        function createTestProducts() {
+            const testProducts = [
+                { type: 'CHA-LOMO', weight: 5.5, price: 15.50 },
+                { type: 'CHA-COST', weight: 3.2, price: 12.80 },
+                { type: 'CHA-PIER', weight: 7.1, price: 14.20 }
+            ];
+
             let inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
-            inventory.push(product);
+            const testBarcodesDiv = document.getElementById('testBarcodes');
+            testBarcodesDiv.innerHTML = '<h4>Códigos de Prueba Creados:</h4>';
+
+            testProducts.forEach((product, index) => {
+                const code = `${product.type}-TEST-${Date.now()}-${index}`;
+                
+                const productData = {
+                    code: code,
+                    type: product.type,
+                    weight: product.weight,
+                    pricePerKilo: product.price,
+                    purchaseDate: new Date().toISOString().split('T')[0],
+                    expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    totalValue: (product.weight * product.price).toFixed(2),
+                    createdAt: new Date().toISOString()
+                };
+
+                inventory.push(productData);
+
+                // Mostrar código de barras de prueba
+                const barcodeDiv = document.createElement('div');
+                barcodeDiv.style.margin = '10px 0';
+                barcodeDiv.style.padding = '10px';
+                barcodeDiv.style.border = '1px solid #ddd';
+                barcodeDiv.style.borderRadius = '5px';
+                
+                barcodeDiv.innerHTML = `
+                    <strong>${getProductName(product.type)}</strong><br>
+                    <small>Código: ${code}</small><br>
+                    <svg id="barcode-${index}"></svg>
+                `;
+                
+                testBarcodesDiv.appendChild(barcodeDiv);
+                
+                // Generar código de barras visual
+                JsBarcode(`#barcode-${index}`, code, {
+                    format: "CODE128",
+                    width: 2,
+                    height: 40,
+                    displayValue: true
+                });
+            });
+
             localStorage.setItem('carniceriaInventory', JSON.stringify(inventory));
             
-            showStatus('✅ Producto guardado en inventario', 'success');
-        }
-
-        // ESCANER
-        function initScanner() {
             const status = document.getElementById('scanStatus');
-
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                status.innerHTML = '❌ La cámara no está disponible';
-                return;
-            }
-
-            status.innerHTML = '🔄 Activando cámara...';
-
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#interactive'),
-                    constraints: {
-                        width: 400,
-                        height: 300,
-                        facingMode: "environment"
-                    }
-                },
-                decoder: {
-                    readers: ["code_128_reader"]
-                }
-            }, function(err) {
-                if (err) {
-                    status.innerHTML = '❌ Error: ' + err.message;
-                    return;
-                }
-                
-                Quagga.start();
-                scannerActive = true;
-                status.innerHTML = '✅ Escáner activo - Enfoca un código de barras';
-            });
-
-            Quagga.onDetected(function(result) {
-                if (!scannerActive) return;
-                const code = result.codeResult.code;
-                searchProduct(code);
-            });
+            status.className = 'status success';
+            status.innerHTML = '✅ PRODUCTOS DE PRUEBA CREADOS - Ya puedes escanearlos!';
         }
 
-        function stopScanner() {
-            if (scannerActive) {
-                Quagga.stop();
-                scannerActive = false;
-                document.getElementById('scanStatus').innerHTML = '⏸️ Escáner detenido';
-            }
-        }
+        // Detener escáner al salir
+        window.addEventListener('beforeunload', stopScanner);
 
-        // Buscar producto escaneado
-        function searchProduct(code) {
-            const inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
-            const product = inventory.find(item => item.code === code);
-
-            const resultDiv = document.getElementById('scanResult');
-            
-            if (product) {
-                document.getElementById('scanCode').textContent = product.code;
-                document.getElementById('scanProduct').textContent = getProductName(product.type);
-                document.getElementById('scanWeight').textContent = product.weight + ' kg';
-                document.getElementById('scanPrice').textContent = 'S/. ' + product.pricePerKilo + '/kg';
-                document.getElementById('scanDate').textContent = product.purchaseDate;
-                document.getElementById('scanExpiry').textContent = product.expiryDate;
-                document.getElementById('scanTotal').textContent = 'S/. ' + product.totalValue;
-                
-                resultDiv.style.display = 'block';
-                document.getElementById('scanStatus').innerHTML = '✅ Producto encontrado';
-                
-                // Vibración en móviles
-                if (navigator.vibrate) navigator.vibrate(200);
-            } else {
-                document.getElementById('scanStatus').innerHTML = '❌ Producto no encontrado en inventario';
-                resultDiv.style.display = 'none';
-            }
-        }
-
-        // Cargar inventario
-        function loadInventory() {
-            const inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
-            const listDiv = document.getElementById('inventoryList');
-            
-            if (inventory.length === 0) {
-                listDiv.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No hay productos en el inventario</p>';
-                return;
-            }
-
-            listDiv.innerHTML = inventory.map(product => `
-                <div class="inventory-item">
-                    <div class="item-info">
-                        <strong>${getProductName(product.type)}</strong><br>
-                        <small>Código: ${product.code}</small><br>
-                        <small>Peso: ${product.weight} kg | Precio: S/. ${product.pricePerKilo}/kg</small><br>
-                        <small>Compra: ${product.purchaseDate} | Vence: ${product.expiryDate}</small>
-                    </div>
-                    <div class="item-actions">
-                        <button class="btn" onclick="viewProduct('${product.code}')">👀 Ver</button>
-                        <button class="btn btn-danger" onclick="deleteProduct('${product.code}')">🗑️ Eliminar</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // Ver producto específico
-        function viewProduct(code) {
-            showTab('scan');
-            searchProduct(code);
-        }
-
-        // Eliminar producto
-        function deleteProduct(code) {
-            if (confirm('¿Estás seguro de eliminar este producto?')) {
-                let inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
-                inventory = inventory.filter(item => item.code !== code);
-                localStorage.setItem('carniceriaInventory', JSON.stringify(inventory));
-                loadInventory();
-                showStatus('✅ Producto eliminado', 'success');
-            }
-        }
-
-        // Limpiar todo el inventario
-        function clearInventory() {
-            if (confirm('¿Estás seguro de limpiar TODO el inventario? Esta acción no se puede deshacer.')) {
-                localStorage.removeItem('carniceriaInventory');
-                loadInventory();
-                showStatus('🗑️ Inventario limpiado', 'success');
-            }
-        }
-
-        // Mostrar estado temporal
-        function showStatus(message, type) {
-            const status = document.createElement('div');
-            status.className = `status ${type}`;
-            status.textContent = message;
-            document.querySelector('.tab-content.active').insertBefore(status, document.querySelector('.tab-content.active').firstChild);
-            
-            setTimeout(() => {
-                status.remove();
-            }, 3000);
-        }
-
-        // Imprimir código de barras
-        function printBarcode() {
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Imprimir Código - La Buena Familia</title>
-                        <style>
-                            body { 
-                                font-family: Arial; 
-                                text-align: center; 
-                                padding: 20px;
-                            }
-                            .barcode { 
-                                margin: 20px 0; 
-                            }
-                            .product-info {
-                                margin: 10px 0;
-                                font-size: 14px;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <h3>Carnicería La Buena Familia</h3>
-                        <div class="barcode">
-                            ${document.getElementById('barcode').outerHTML}
-                        </div>
-                        <div class="product-info">
-                            ${document.getElementById('productDetails').innerHTML}
-                        </div>
-                        <p><small>${new Date().toLocaleString()}</small></p>
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
-            printWindow.print();
-        }
-
-        // Cargar inventario al mostrar la pestaña
-        document.querySelector('.tab[onclick="showTab(\'inventory\')"]').addEventListener('click', loadInventory);
-
-        // Cargar inventario inicial si existe
+        // Cargar algunos productos de prueba automáticamente si no hay inventario
         window.addEventListener('load', function() {
-            loadInventory();
+            const inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
+            if (inventory.length === 0) {
+                // Crear un producto de prueba por defecto
+                const defaultProduct = {
+                    code: 'CHA-LOMO-DEMO-001',
+                    type: 'CHA-LOMO',
+                    weight: 5.0,
+                    pricePerKilo: 15.00,
+                    purchaseDate: new Date().toISOString().split('T')[0],
+                    expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    totalValue: '75.00',
+                    createdAt: new Date().toISOString()
+                };
+                localStorage.setItem('carniceriaInventory', JSON.stringify([defaultProduct]));
+            }
         });
     </script>
 </body>

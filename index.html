@@ -2,343 +2,648 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Almacén Anyela - Sistema Completo</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="almacen-styles.css">
-    <!-- Chart.js para gráficos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Almacén Carnicería - La Buena Familia</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #e74c3c;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.4em;
+            margin-bottom: 5px;
+        }
+
+        .tabs {
+            display: flex;
+            background: #34495e;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .tab.active {
+            background: #e74c3c;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        input:focus, select:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn-success {
+            background: #27ae60;
+        }
+
+        .btn-success:hover {
+            background: #219a52;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .barcode-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+        }
+
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        #interactive {
+            width: 100%;
+            height: 100%;
+        }
+
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: #e74c3c;
+            top: 50%;
+            animation: scan 2s infinite linear;
+        }
+
+        @keyframes scan {
+            0%, 100% { top: 10%; }
+            50% { top: 90%; }
+        }
+
+        .product-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+
+        .info-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .info-value {
+            color: #e74c3c;
+        }
+
+        .inventory-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .inventory-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .inventory-item:hover {
+            background: #f8f9fa;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .status {
+            padding: 10px;
+            text-align: center;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
 </head>
-<body class="mobile-body">
-    <div class="almacen-container">
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🥩 CARNICERÍA LA BUENA FAMILIA</h1>
+            <p>Sistema de Gestión de Almacén</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('create')">📦 Crear Producto</div>
+            <div class="tab" onclick="showTab('scan')">📷 Escanear Producto</div>
+            <div class="tab" onclick="showTab('inventory')">📊 Inventario</div>
+        </div>
+
+        <!-- PESTAÑA 1: CREAR PRODUCTO -->
+        <div id="create" class="tab-content active">
+            <h2>Crear Nuevo Producto de Chancho</h2>
+            
+            <div class="form-group">
+                <label for="productType">Tipo de Corte:</label>
+                <select id="productType">
+                    <option value="CHA-LOMO">Lomo de Chancho</option>
+                    <option value="CHA-COST">Costilla de Chancho</option>
+                    <option value="CHA-PIER">Pierna de Chancho</option>
+                    <option value="CHA-PANC">Panceta de Chancho</option>
+                    <option value="CHA-JAM">Jamón de Chancho</option>
+                    <option value="CHA-OTRO">Otro Corte</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="productWeight">Peso (Kilos):</label>
+                <input type="number" id="productWeight" step="0.01" placeholder="Ej: 5.75" min="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="purchasePrice">Precio de Compra (S/. por kilo):</label>
+                <input type="number" id="purchasePrice" step="0.01" placeholder="Ej: 12.50" min="0.1">
+            </div>
+
+            <div class="form-group">
+                <label for="purchaseDate">Fecha de Compra:</label>
+                <input type="date" id="purchaseDate">
+            </div>
+
+            <div class="form-group">
+                <label for="expiryDate">Fecha de Vencimiento:</label>
+                <input type="date" id="expiryDate">
+            </div>
+
+            <button class="btn btn-success" onclick="generateProduct()">🎯 Generar Código de Barras</button>
+
+            <div id="barcodeResult" class="barcode-container" style="display: none;">
+                <h3>✅ Producto Creado Exitosamente</h3>
+                <svg id="barcode"></svg>
+                <div id="productDetails"></div>
+                <button class="btn" onclick="printBarcode()">🖨️ Imprimir Código</button>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 2: ESCANEAR PRODUCTO -->
+        <div id="scan" class="tab-content">
+            <h2>Escanear Producto</h2>
+            
+            <div class="scanner-container">
+                <div id="interactive"></div>
+                <div class="scan-line"></div>
+            </div>
+
+            <div class="status" id="scanStatus">
+                Presiona "Iniciar Escáner" para buscar productos
+            </div>
+
+            <div class="controls">
+                <button class="btn" onclick="initScanner()">📷 Iniciar Escáner</button>
+                <button class="btn btn-danger" onclick="stopScanner()">⏹️ Detener Escáner</button>
+            </div>
+
+            <div id="scanResult" class="product-info" style="display: none;">
+                <h3>📋 Información del Producto</h3>
+                <div class="info-item">
+                    <span class="info-label">Código:</span>
+                    <span class="info-value" id="scanCode">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Producto:</span>
+                    <span class="info-value" id="scanProduct">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Peso:</span>
+                    <span class="info-value" id="scanWeight">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Precio Compra:</span>
+                    <span class="info-value" id="scanPrice">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Fecha Compra:</span>
+                    <span class="info-value" id="scanDate">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Vencimiento:</span>
+                    <span class="info-value" id="scanExpiry">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Valor Total:</span>
+                    <span class="info-value" id="scanTotal">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PESTAÑA 3: INVENTARIO -->
+        <div id="inventory" class="tab-content">
+            <h2>Inventario de Productos</h2>
+            <button class="btn btn-danger" onclick="clearInventory()">🗑️ Limpiar Todo el Inventario</button>
+            
+            <div class="inventory-list" id="inventoryList">
+                <!-- Los productos se cargarán aquí -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar fecha actual
+        document.getElementById('purchaseDate').valueAsDate = new Date();
         
-        <!-- HEADER PRINCIPAL -->
-        <header class="almacen-header">
-            <div class="header-top">
-                <div class="sede-selector">
-                    <select id="sede-select">
-                        <option value="anyela">Anyela</option>
-                        <option value="rebequita">Rebequita</option>
-                    </select>
-                </div>
-                <div class="header-center">
-                    <h1 class="app-title">
-                        <i class="fas fa-warehouse"></i>
-                        Almacén Carnes
-                    </h1>
-                </div>
-                <div class="header-actions">
-                    <button class="header-btn" id="sync-btn" title="Sincronizar">
-                        <i class="fas fa-sync"></i>
-                    </button>
-                    <button class="header-btn" id="user-btn" title="Usuario">
-                        <i class="fas fa-user"></i>
-                    </button>
-                </div>
-            </div>
+        // Establecer vencimiento por defecto (7 días después)
+        let expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 7);
+        document.getElementById('expiryDate').valueAsDate = expiryDate;
+
+        let scannerActive = false;
+
+        // Mostrar pestañas
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
             
-            <!-- INDICADORES RÁPIDOS -->
-            <div class="header-stats">
-                <div class="stat-item">
-                    <div class="stat-value" id="stat-total-productos">0</div>
-                    <div class="stat-label">Productos</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="stat-stock-total">0 kg</div>
-                    <div class="stat-label">Stock Total</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="stat-alertas">0</div>
-                    <div class="stat-label">Alertas</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="stat-valor">S/ 0</div>
-                    <div class="stat-label">Valor</div>
-                </div>
-            </div>
-        </header>
+            document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
 
-        <!-- NAVEGACIÓN PRINCIPAL -->
-        <nav class="main-nav">
-            <button class="nav-btn active" data-tab="dashboard">
-                <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
-            </button>
-            <button class="nav-btn" data-tab="inventario">
-                <i class="fas fa-boxes"></i>
-                <span>Inventario</span>
-            </button>
-            <button class="nav-btn" data-tab="compras">
-                <i class="fas fa-shopping-cart"></i>
-                <span>Compras</span>
-            </button>
-            <button class="nav-btn" data-tab="proveedores">
-                <i class="fas fa-truck"></i>
-                <span>Proveedores</span>
-            </button>
-            <button class="nav-btn" data-tab="scanner">
-                <i class="fas fa-camera"></i>
-                <span>Escanear</span>
-            </button>
-            <button class="nav-btn" data-tab="reportes">
-                <i class="fas fa-chart-bar"></i>
-                <span>Reportes</span>
-            </button>
-        </nav>
+        // Generar producto nuevo
+        function generateProduct() {
+            const type = document.getElementById('productType').value;
+            const weight = parseFloat(document.getElementById('productWeight').value);
+            const price = parseFloat(document.getElementById('purchasePrice').value);
+            const purchaseDate = document.getElementById('purchaseDate').value;
+            const expiryDate = document.getElementById('expiryDate').value;
 
-        <!-- CONTENIDO PRINCIPAL -->
-        <main class="main-content">
+            if (!weight || !price || !purchaseDate || !expiryDate) {
+                alert('❌ Por favor completa todos los campos');
+                return;
+            }
+
+            // Generar código único
+            const timestamp = new Date().getTime();
+            const random = Math.floor(Math.random() * 1000);
+            const productCode = `${type}-${timestamp}-${random}`;
+
+            // Crear objeto producto
+            const product = {
+                code: productCode,
+                type: type,
+                weight: weight,
+                pricePerKilo: price,
+                purchaseDate: purchaseDate,
+                expiryDate: expiryDate,
+                totalValue: (weight * price).toFixed(2),
+                createdAt: new Date().toISOString()
+            };
+
+            // Guardar en localStorage
+            saveProduct(product);
+
+            // Generar código de barras
+            JsBarcode("#barcode", productCode, {
+                format: "CODE128",
+                width: 2,
+                height: 80,
+                displayValue: true
+            });
+
+            // Mostrar detalles
+            document.getElementById('productDetails').innerHTML = `
+                <p><strong>Código:</strong> ${productCode}</p>
+                <p><strong>Producto:</strong> ${getProductName(type)}</p>
+                <p><strong>Peso:</strong> ${weight} kg</p>
+                <p><strong>Precio Compra:</strong> S/. ${price}/kg</p>
+                <p><strong>Valor Total:</strong> S/. ${product.totalValue}</p>
+                <p><strong>Fecha Compra:</strong> ${purchaseDate}</p>
+                <p><strong>Vencimiento:</strong> ${expiryDate}</p>
+            `;
+
+            document.getElementById('barcodeResult').style.display = 'block';
+
+            // Limpiar formulario
+            document.getElementById('productWeight').value = '';
+            document.getElementById('purchasePrice').value = '';
+        }
+
+        // Obtener nombre del producto
+        function getProductName(type) {
+            const names = {
+                'CHA-LOMO': 'Lomo de Chancho',
+                'CHA-COST': 'Costilla de Chancho',
+                'CHA-PIER': 'Pierna de Chancho',
+                'CHA-PANC': 'Panceta de Chancho',
+                'CHA-JAM': 'Jamón de Chancho',
+                'CHA-OTRO': 'Otro Corte de Chancho'
+            };
+            return names[type] || 'Producto de Chancho';
+        }
+
+        // Guardar producto en localStorage
+        function saveProduct(product) {
+            let inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
+            inventory.push(product);
+            localStorage.setItem('carniceriaInventory', JSON.stringify(inventory));
             
-            <!-- DASHBOARD -->
-            <div class="tab-content active" id="dashboard-tab">
-                <div class="dashboard-grid">
-                    <!-- ALERTAS URGENTES -->
-                    <div class="dashboard-card alertas-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-exclamation-triangle"></i> Alertas Urgentes</h3>
-                            <span class="badge" id="contador-alertas">0</span>
+            showStatus('✅ Producto guardado en inventario', 'success');
+        }
+
+        // ESCANER
+        function initScanner() {
+            const status = document.getElementById('scanStatus');
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                status.innerHTML = '❌ La cámara no está disponible';
+                return;
+            }
+
+            status.innerHTML = '🔄 Activando cámara...';
+
+            Quagga.init({
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: document.querySelector('#interactive'),
+                    constraints: {
+                        width: 400,
+                        height: 300,
+                        facingMode: "environment"
+                    }
+                },
+                decoder: {
+                    readers: ["code_128_reader"]
+                }
+            }, function(err) {
+                if (err) {
+                    status.innerHTML = '❌ Error: ' + err.message;
+                    return;
+                }
+                
+                Quagga.start();
+                scannerActive = true;
+                status.innerHTML = '✅ Escáner activo - Enfoca un código de barras';
+            });
+
+            Quagga.onDetected(function(result) {
+                if (!scannerActive) return;
+                const code = result.codeResult.code;
+                searchProduct(code);
+            });
+        }
+
+        function stopScanner() {
+            if (scannerActive) {
+                Quagga.stop();
+                scannerActive = false;
+                document.getElementById('scanStatus').innerHTML = '⏸️ Escáner detenido';
+            }
+        }
+
+        // Buscar producto escaneado
+        function searchProduct(code) {
+            const inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
+            const product = inventory.find(item => item.code === code);
+
+            const resultDiv = document.getElementById('scanResult');
+            
+            if (product) {
+                document.getElementById('scanCode').textContent = product.code;
+                document.getElementById('scanProduct').textContent = getProductName(product.type);
+                document.getElementById('scanWeight').textContent = product.weight + ' kg';
+                document.getElementById('scanPrice').textContent = 'S/. ' + product.pricePerKilo + '/kg';
+                document.getElementById('scanDate').textContent = product.purchaseDate;
+                document.getElementById('scanExpiry').textContent = product.expiryDate;
+                document.getElementById('scanTotal').textContent = 'S/. ' + product.totalValue;
+                
+                resultDiv.style.display = 'block';
+                document.getElementById('scanStatus').innerHTML = '✅ Producto encontrado';
+                
+                // Vibración en móviles
+                if (navigator.vibrate) navigator.vibrate(200);
+            } else {
+                document.getElementById('scanStatus').innerHTML = '❌ Producto no encontrado en inventario';
+                resultDiv.style.display = 'none';
+            }
+        }
+
+        // Cargar inventario
+        function loadInventory() {
+            const inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
+            const listDiv = document.getElementById('inventoryList');
+            
+            if (inventory.length === 0) {
+                listDiv.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">No hay productos en el inventario</p>';
+                return;
+            }
+
+            listDiv.innerHTML = inventory.map(product => `
+                <div class="inventory-item">
+                    <div class="item-info">
+                        <strong>${getProductName(product.type)}</strong><br>
+                        <small>Código: ${product.code}</small><br>
+                        <small>Peso: ${product.weight} kg | Precio: S/. ${product.pricePerKilo}/kg</small><br>
+                        <small>Compra: ${product.purchaseDate} | Vence: ${product.expiryDate}</small>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn" onclick="viewProduct('${product.code}')">👀 Ver</button>
+                        <button class="btn btn-danger" onclick="deleteProduct('${product.code}')">🗑️ Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Ver producto específico
+        function viewProduct(code) {
+            showTab('scan');
+            searchProduct(code);
+        }
+
+        // Eliminar producto
+        function deleteProduct(code) {
+            if (confirm('¿Estás seguro de eliminar este producto?')) {
+                let inventory = JSON.parse(localStorage.getItem('carniceriaInventory') || '[]');
+                inventory = inventory.filter(item => item.code !== code);
+                localStorage.setItem('carniceriaInventory', JSON.stringify(inventory));
+                loadInventory();
+                showStatus('✅ Producto eliminado', 'success');
+            }
+        }
+
+        // Limpiar todo el inventario
+        function clearInventory() {
+            if (confirm('¿Estás seguro de limpiar TODO el inventario? Esta acción no se puede deshacer.')) {
+                localStorage.removeItem('carniceriaInventory');
+                loadInventory();
+                showStatus('🗑️ Inventario limpiado', 'success');
+            }
+        }
+
+        // Mostrar estado temporal
+        function showStatus(message, type) {
+            const status = document.createElement('div');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            document.querySelector('.tab-content.active').insertBefore(status, document.querySelector('.tab-content.active').firstChild);
+            
+            setTimeout(() => {
+                status.remove();
+            }, 3000);
+        }
+
+        // Imprimir código de barras
+        function printBarcode() {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Imprimir Código - La Buena Familia</title>
+                        <style>
+                            body { 
+                                font-family: Arial; 
+                                text-align: center; 
+                                padding: 20px;
+                            }
+                            .barcode { 
+                                margin: 20px 0; 
+                            }
+                            .product-info {
+                                margin: 10px 0;
+                                font-size: 14px;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <h3>Carnicería La Buena Familia</h3>
+                        <div class="barcode">
+                            ${document.getElementById('barcode').outerHTML}
                         </div>
-                        <div class="alertas-list" id="alertas-list"></div>
-                    </div>
-
-                    <!-- MÉTRICAS PRINCIPALES -->
-                    <div class="dashboard-card metricas-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-chart-pie"></i> Métricas</h3>
+                        <div class="product-info">
+                            ${document.getElementById('productDetails').innerHTML}
                         </div>
-                        <div class="metricas-grid">
-                            <div class="metrica-item">
-                                <div class="metrica-valor" id="metrica-rotacion">0%</div>
-                                <div class="metrica-label">Rotación</div>
-                            </div>
-                            <div class="metrica-item">
-                                <div class="metrica-valor" id="metrica-mermas">0%</div>
-                                <div class="metrica-label">Mermas</div>
-                            </div>
-                            <div class="metrica-item">
-                                <div class="metrica-valor" id="metrica-cobertura">0 días</div>
-                                <div class="metrica-label">Cobertura</div>
-                            </div>
-                        </div>
-                    </div>
+                        <p><small>${new Date().toLocaleString()}</small></p>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
 
-                    <!-- GRÁFICO STOCK -->
-                    <div class="dashboard-card chart-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-chart-bar"></i> Stock por Categoría</h3>
-                        </div>
-                        <canvas id="stock-chart" height="200"></canvas>
-                    </div>
+        // Cargar inventario al mostrar la pestaña
+        document.querySelector('.tab[onclick="showTab(\'inventory\')"]').addEventListener('click', loadInventory);
 
-                    <!-- PRODUCTOS CRÍTICOS -->
-                    <div class="dashboard-card criticos-card">
-                        <div class="card-header">
-                            <h3><i class="fas fa-skull-crossbones"></i> Productos Críticos</h3>
-                        </div>
-                        <div class="criticos-list" id="criticos-list"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- INVENTARIO -->
-            <div class="tab-content" id="inventario-tab">
-                <div class="section-header">
-                    <h2>Gestión de Inventario</h2>
-                    <div class="header-actions">
-                        <button class="btn btn-primary" id="nuevo-producto-btn">
-                            <i class="fas fa-plus"></i> Nuevo Producto
-                        </button>
-                        <button class="btn btn-secondary" id="nuevo-lote-btn">
-                            <i class="fas fa-pallet"></i> Nuevo Lote
-                        </button>
-                    </div>
-                </div>
-
-                <!-- FILTROS RÁPIDOS -->
-                <div class="filtros-rapidos">
-                    <div class="filtro-group">
-                        <label>Categoría:</label>
-                        <select id="filtro-categoria">
-                            <option value="">Todas</option>
-                        </select>
-                    </div>
-                    <div class="filtro-group">
-                        <label>Estado:</label>
-                        <select id="filtro-estado">
-                            <option value="">Todos</option>
-                            <option value="stock-bajo">Stock Bajo</option>
-                            <option value="stock-critico">Stock Crítico</option>
-                            <option value="sin-stock">Sin Stock</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-outline" id="aplicar-filtros">
-                        <i class="fas fa-filter"></i> Filtrar
-                    </button>
-                </div>
-
-                <!-- LISTA DE PRODUCTOS -->
-                <div class="productos-grid" id="lista-productos"></div>
-            </div>
-
-            <!-- COMPRAS -->
-            <div class="tab-content" id="compras-tab">
-                <div class="section-header">
-                    <h2>Gestión de Compras</h2>
-                    <div class="header-actions">
-                        <button class="btn btn-primary" id="nueva-orden-btn">
-                            <i class="fas fa-file-invoice"></i> Nueva Orden
-                        </button>
-                        <button class="btn btn-secondary" id="nueva-compra-btn">
-                            <i class="fas fa-cart-plus"></i> Registrar Compra
-                        </button>
-                    </div>
-                </div>
-
-                <!-- PESTAÑAS COMPRAS -->
-                <div class="sub-nav">
-                    <button class="sub-nav-btn active" data-subtab="ordenes">Órdenes de Compra</button>
-                    <button class="sub-nav-btn" data-subtab="compras">Historial Compras</button>
-                    <button class="sub-nav-btn" data-subtab="pendientes">Pendientes</button>
-                </div>
-
-                <div class="sub-content active" id="ordenes-subtab">
-                    <div id="lista-ordenes"></div>
-                </div>
-            </div>
-
-            <!-- PROVEEDORES -->
-            <div class="tab-content" id="proveedores-tab">
-                <div class="section-header">
-                    <h2>Gestión de Proveedores</h2>
-                    <button class="btn btn-primary" id="nuevo-proveedor-btn">
-                        <i class="fas fa-plus"></i> Nuevo Proveedor
-                    </button>
-                </div>
-                <div id="lista-proveedores"></div>
-            </div>
-
-            <!-- SCANNER -->
-            <div class="tab-content" id="scanner-tab">
-                <div class="scanner-container">
-                    <div class="scanner-view" id="scanner-view">
-                        <div class="scanner-frame">
-                            <i class="fas fa-camera"></i>
-                            <p>Enfocar código de barras en el área</p>
-                            <div class="scan-area"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="scanner-controls">
-                        <button class="btn btn-primary" id="start-scanner">
-                            <i class="fas fa-play"></i> Iniciar Scanner
-                        </button>
-                        <button class="btn btn-secondary" id="toggle-flash">
-                            <i class="fas fa-bolt"></i> Flash
-                        </button>
-                    </div>
-
-                    <div class="manual-input">
-                        <input type="text" id="manual-barcode" placeholder="Ingresar código manualmente">
-                        <button class="btn btn-primary" id="search-barcode">
-                            <i class="fas fa-search"></i> Buscar
-                        </button>
-                    </div>
-
-                    <div class="scan-results" id="scan-results"></div>
-                </div>
-            </div>
-
-            <!-- REPORTES -->
-            <div class="tab-content" id="reportes-tab">
-                <div class="section-header">
-                    <h2>Reportes y Análisis</h2>
-                </div>
-
-                <div class="reportes-grid">
-                    <div class="reporte-card" data-reporte="stock">
-                        <i class="fas fa-boxes"></i>
-                        <h4>Reporte de Stock</h4>
-                        <p>Análisis completo de inventario</p>
-                    </div>
-                    <div class="reporte-card" data-reporte="compras">
-                        <i class="fas fa-shopping-cart"></i>
-                        <h4>Compras vs Ventas</h4>
-                        <p>Comparativa y tendencias</p>
-                    </div>
-                    <div class="reporte-card" data-reporte="mermas">
-                        <i class="fas fa-chart-line"></i>
-                        <h4>Análisis de Mermas</h4>
-                        <p>Pérdidas y optimización</p>
-                    </div>
-                    <div class="reporte-card" data-reporte="proveedores">
-                        <i class="fas fa-truck"></i>
-                        <h4>Evaluación Proveedores</h4>
-                        <p>Calificación y rendimiento</p>
-                    </div>
-                    <div class="reporte-card" data-reporte="rotacion">
-                        <i class="fas fa-sync"></i>
-                        <h4>Rotación de Productos</h4>
-                        <p>Análisis ABC y tendencias</p>
-                    </div>
-                    <div class="reporte-card" data-reporte="valorizacion">
-                        <i class="fas fa-dollar-sign"></i>
-                        <h4>Valorización Inventario</h4>
-                        <p>Valor actual del stock</p>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- MODALES -->
-    <!-- Modal Nuevo Producto -->
-    <div class="modal" id="modal-producto">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Nuevo Producto</h3>
-                <button class="close-btn" id="close-producto-modal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <!-- Formulario de producto -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Nueva Orden Compra -->
-    <div class="modal" id="modal-orden-compra">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Nueva Orden de Compra</h3>
-                <button class="close-btn" id="close-orden-modal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <!-- Formulario orden compra -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Nuevo Proveedor -->
-    <div class="modal" id="modal-proveedor">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Nuevo Proveedor</h3>
-                <button class="close-btn" id="close-proveedor-modal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <!-- Formulario proveedor -->
-            </div>
-        </div>
-    </div>
-
-    <!-- NOTIFICACIONES -->
-    <div class="notification-container" id="notification-container"></div>
-
-    <script src="almacen-completo.js"></script>
+        // Cargar inventario inicial si existe
+        window.addEventListener('load', function() {
+            loadInventory();
+        });
+    </script>
 </body>
 </html>
